@@ -77,7 +77,6 @@ void TensorObj::setData(void *data_) {
 void TensorObj::dataMalloc(const Runtime &runtime) {
     if (data == nullptr) {
         data = make_ref<BlobObj>(runtime->allocDevice(getTotalBytes()));
-        device = runtime->getCurrentThreadContext()->device;
     } else {
         if (runtime->getCurrentThreadContext()->device != device &&
             device == INFINI_DEVICE_CPU) {
@@ -87,6 +86,7 @@ void TensorObj::dataMalloc(const Runtime &runtime) {
             setData(data_ptr);
         }
     }
+    device = runtime->getCurrentThreadContext()->device;
 }
 
 ElementType TensorObj::getElement() const {

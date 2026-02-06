@@ -13,9 +13,10 @@ class BlobObj {
     BlobObj(void *ptr) : ptr(ptr) {}
     BlobObj(BlobObj &other) = delete;
     BlobObj &operator=(BlobObj const &) = delete;
-    ~BlobObj() {};
+    ~BlobObj(){};
 
     template <typename T> T getPtr() const { return reinterpret_cast<T>(ptr); }
+    void *getRawDataPtr() const { return ptr; }
 };
 
 } // namespace infini
