@@ -127,7 +127,7 @@ bool GraphObj::topo_sort() {
     }
 
     if (sorted.size() != ops.size()) {
-        // 有环，拓扑失败
+        // Cycle detected, topological sort failed
         return false;
     }
 
@@ -190,26 +190,26 @@ void GraphObj::addOperatorAndConnect(const Operator &op) {
 }
 
 bool GraphObj::checkValid() const {
-    // 构建快速查找集合
+    // Build fast lookup sets
     std::unordered_set<Tensor> tensorSet(tensors.begin(), tensors.end());
     std::unordered_set<Operator> opSet(ops.begin(), ops.end());
 
-    // 1. 检查所有 Tensor
+    // 1. Check all Tensors
     for (auto tensor : tensors) {
-        // 必须有 source 或 targets
+        // Must have source or targets
         IT_ASSERT(
             !(tensor->getTargets().empty() && tensor->getSource() == nullptr),
             "Invalid tensor: " + tensor->toString() +
                 " has no source and no targets");
 
-        // 检查 target ops 是否都在 Graph
+        // Check if all target ops are in Graph
         for (auto op : tensor->getTargets()) {
             IT_ASSERT(opSet.count(op),
                       "Tensor " + tensor->toString() +
                           " has target op not in graph: " + op->toString());
         }
 
-        // 检查 source op 是否在 Graph
+        // Check if source op is in Graph
         if (auto src = tensor->getSource()) {
             IT_ASSERT(opSet.count(src),
                       "Tensor " + tensor->toString() +
@@ -217,23 +217,23 @@ bool GraphObj::checkValid() const {
         }
     }
 
-    // 2. 检查所有 Operator
+    // 2. Check all Operators
     for (auto op : ops) {
-        // 输入 tensor 必须存在
+        // Input tensor must exist
         for (auto tensor : op->getInputs()) {
             IT_ASSERT(
                 tensorSet.count(tensor),
                 "Op " + op->toString() +
                     " has input tensor not in graph: " + tensor->toString());
         }
-        // 输出 tensor 必须存在
+        // Output tensor must exist
         for (auto tensor : op->getOutputs()) {
             IT_ASSERT(
                 tensorSet.count(tensor),
                 "Op " + op->toString() +
                     " has output tensor not in graph: " + tensor->toString());
         }
-        // 前驱/后继必须存在
+        // Predecessors/Successors must exist
         for (auto pre : op->getPredecessors()) {
             IT_ASSERT(opSet.count(pre),
                       "Op " + op->toString() +
@@ -246,7 +246,7 @@ bool GraphObj::checkValid() const {
         }
     }
 
-    // 3. 检查 Tensor 的 FUID 唯一性
+    // 3. Check uniqueness of Tensor FUIDs
     std::unordered_set<UidBaseType> fuids;
     for (auto tensor : tensors) {
         IT_ASSERT(fuids.insert(tensor->getFuid()).second,
@@ -254,7 +254,7 @@ bool GraphObj::checkValid() const {
                       std::to_string(tensor->getFuid()));
     }
 
-    // 4. 检查双向一致性
+    // 4. Check bidirectional consistency
     for (auto tensor : tensors) {
         for (auto targetOp : tensor->getTargets()) {
             auto &inputs = targetOp->getInputs();

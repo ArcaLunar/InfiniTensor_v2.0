@@ -7,7 +7,7 @@ class TensorBasicTest : public testing::Test {
     void SetUp() override {}
 };
 
-// 测试从常量形状向量构造Tensor
+// Test constructing Tensor from constant shape vector
 TEST_F(TensorBasicTest, ConstructFromConcreteShapeVector) {
     Shape concreteDims = {2, 3, 4};
     auto tensor = make_ref<TensorObj>(concreteDims, DataType(INFINI_DTYPE_F32));
@@ -23,7 +23,7 @@ TEST_F(TensorBasicTest, ConstructFromConcreteShapeVector) {
     EXPECT_EQ(constantShape, concreteDims);
 }
 
-// 测试从符号形状构造Tensor
+// Test constructing Tensor from symbolic shape
 TEST_F(TensorBasicTest, ConstructFromSymbolicShape) {
     auto batch = ExprObj::variable("batch");
     auto height = ExprObj::constant(224);
@@ -42,11 +42,11 @@ TEST_F(TensorBasicTest, ConstructFromSymbolicShape) {
     EXPECT_EQ(tensor->getShape()->toString(), "[batch, 224, 224, 3]");
 }
 
-// 测试从混合形状构造Tensor
+// Test constructing Tensor from mixed shape
 TEST_F(TensorBasicTest, ConstructFromMixedShape) {
     auto shapeExpr = ShapeExpr(new ShapeExprObj(
         {ExprObj::variable("batch"),
-         ExprObj::constant(256) + ExprObj::constant(2), // 计算表达式
+         ExprObj::constant(256) + ExprObj::constant(2), // Compute expression
          ExprObj::constant(128), ExprObj::variable("channels")}));
 
     auto tensor = make_ref<TensorObj>(shapeExpr, DataType(INFINI_DTYPE_I32));
@@ -57,17 +57,17 @@ TEST_F(TensorBasicTest, ConstructFromMixedShape) {
               "[batch, (256 + 2), 128, channels]");
 }
 
-// 测试带步长的Tensor构造
+// Test constructing Tensor with stride
 TEST_F(TensorBasicTest, ConstructWithStride) {
     Shape concreteDims = {2, 3, 4};
-    Stride strideDims = {12, 4, 1}; // 连续步长
+    Stride strideDims = {12, 4, 1}; // Contiguous stride
 
-    // 从常量步长构造
+    // Construct from constant stride
     auto tensor1 = make_ref<TensorObj>(concreteDims, strideDims,
                                        DataType(INFINI_DTYPE_U32));
     EXPECT_EQ(tensor1->getRank(), 3);
 
-    // 从步长表达式构造
+    // Construct from stride expression
     auto strideExpr = StrideExpr(new StrideExprObj(
         {ExprObj::constant(12), ExprObj::constant(4), ExprObj::constant(1)}));
 
@@ -76,22 +76,22 @@ TEST_F(TensorBasicTest, ConstructWithStride) {
     EXPECT_EQ(tensor2->getStride()->toString(), "[12, 4, 1]");
 }
 
-// 测试形状获取和设置
+// Test shape getter and setter
 TEST_F(TensorBasicTest, ShapeGetSet) {
     auto tensor =
         make_ref<TensorObj>(Shape{2, 3, 4}, DataType(INFINI_DTYPE_F32));
 
-    // 获取形状
+    // Get shape
     auto shape = tensor->getShape();
     EXPECT_TRUE(shape->isConcrete());
     EXPECT_EQ(shape->getConstantValue(), Shape({2, 3, 4}));
 
-    // 设置为新的常量形状
+    // Set to new constant shape
     tensor->setShape(Shape{5, 6, 7});
     auto newShape = tensor->getShape();
     EXPECT_EQ(newShape->getConstantValue(), Shape({5, 6, 7}));
 
-    // 设置为符号形状
+    // Set to symbolic shape
     auto symShape = ShapeExpr(
         new ShapeExprObj({ExprObj::variable("batch"), ExprObj::constant(224),
                           ExprObj::constant(224)}));
@@ -100,22 +100,22 @@ TEST_F(TensorBasicTest, ShapeGetSet) {
     EXPECT_EQ(tensor->getShape()->toString(), "[batch, 224, 224]");
 }
 
-// 测试步长获取和设置
+// Test stride getter and setter
 TEST_F(TensorBasicTest, StrideGetSet) {
     auto tensor =
         make_ref<TensorObj>(Shape{2, 3, 4}, DataType(INFINI_DTYPE_F32));
 
-    // 初始应该是连续步长
+    // Initial should be contiguous stride
     auto stride = tensor->getStride();
     EXPECT_TRUE(stride->isConcrete());
-    // 连续步长应该是 [3*4, 4, 1] = [12, 4, 1]
+    // Contiguous stride should be [3*4, 4, 1] = [12, 4, 1]
 
-    // 设置新的常量步长
+    // Set new constant stride
     tensor->setStride(Stride{6, 2, 1});
     auto newStride = tensor->getStride();
     EXPECT_EQ(newStride->getConstantValue(), Stride({6, 2, 1}));
 
-    // 设置为步长表达式
+    // Set to stride expression
     auto strideExpr = StrideExpr(
         new StrideExprObj({ExprObj::variable("stride0"), ExprObj::constant(2),
                            ExprObj::constant(1)}));
@@ -123,37 +123,38 @@ TEST_F(TensorBasicTest, StrideGetSet) {
     EXPECT_EQ(tensor->getStride()->toString(), "[stride0, 2, 1]");
 }
 
-// 测试元素总数计算
+// Test total element count calculation
 TEST_F(TensorBasicTest, ElementCount) {
-    // 常量形状
+    // Constant shape
     auto tensor1 =
         make_ref<TensorObj>(Shape{2, 3, 4}, DataType(INFINI_DTYPE_F32));
     EXPECT_EQ(tensor1->getElement(), 2 * 3 * 4); // 24
 
-    // 符号形状
+    // Symbolic shape
     auto symShape = ShapeExpr(
         new ShapeExprObj({ExprObj::variable("batch"), ExprObj::constant(224),
                           ExprObj::constant(224)}));
     auto tensor2 = make_ref<TensorObj>(symShape, DataType(INFINI_DTYPE_F32));
 
-    EXPECT_THROW(tensor2->getElement(), Exception); // 无法计算元素总数
+    EXPECT_THROW(tensor2->getElement(),
+                 Exception); // Cannot calculate element count
     tensor2->setShape(symShape->evaluate({{"batch", 3}}).value());
     EXPECT_EQ(tensor2->getElement(), 3 * 224 * 224); // 3*224*224
 }
 
-// 测试存储大小和总字节数
+// Test storage size and total bytes
 TEST_F(TensorBasicTest, StorageSizeAndBytes) {
     auto tensor =
         make_ref<TensorObj>(Shape{2, 3, 4}, DataType(INFINI_DTYPE_F32));
 
     EXPECT_EQ(tensor->getElement(), 24);     // 2*3*4
-    EXPECT_EQ(tensor->getStorageSize(), 24); // 假设连续存储
+    EXPECT_EQ(tensor->getStorageSize(), 24); // Assume contiguous storage
 
-    // 测试总字节数
+    // Test total bytes
     auto totalBytes = tensor->getTotalBytes();
     EXPECT_EQ(totalBytes, 24 * sizeof(float));
 
-    // 测试不同数据类型
+    // Test different data types
     auto tensorInt8 =
         make_ref<TensorObj>(Shape{10, 20}, DataType(INFINI_DTYPE_I8));
     EXPECT_EQ(tensorInt8->getTotalBytes(), 10 * 20 * sizeof(int8_t));

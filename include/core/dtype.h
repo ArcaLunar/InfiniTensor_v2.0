@@ -32,7 +32,7 @@ class DataType {
         case INFINI_DTYPE_U64:
             return 8;
         case INFINI_DTYPE_F8:
-            return 1; // 自定义 8-bit float
+            return 1;
         case INFINI_DTYPE_F16:
             return 2;
         case INFINI_DTYPE_F32:

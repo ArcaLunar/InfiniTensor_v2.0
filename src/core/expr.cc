@@ -2,7 +2,7 @@
 
 namespace infini {
 //==================================
-// Static Factory Functions 实现
+// Static Factory Functions Implementation
 //==================================
 Expr ExprObj::constant(ElementType value) {
     return Expr(new ConstantExprObj(value));
@@ -41,7 +41,7 @@ Expr ExprObj::createMax(const Expr &lhs, const Expr &rhs) {
 }
 
 //==================================
-// 运算符重载实现
+// Operator Overload Implementation
 //==================================
 Expr operator+(const Expr &lhs, const Expr &rhs) {
     return ExprObj::createAdd(lhs, rhs);
@@ -68,7 +68,7 @@ bool operator==(const Expr &lhs, const Expr &rhs) { return lhs->equals(rhs); }
 bool operator!=(const Expr &lhs, const Expr &rhs) { return !(lhs == rhs); }
 
 //==================================
-// ConstantExprObj 实现
+// ConstantExprObj Implementation
 //==================================
 ConstantExprObj::ConstantExprObj(ElementType v) : value(v) {}
 
@@ -97,7 +97,7 @@ bool ConstantExprObj::equals(const Expr &other) const {
 std::optional<ElementType> ConstantExprObj::asConstant() const { return value; }
 
 //==================================
-// VariableExprObj 实现
+// VariableExprObj Implementation
 //==================================
 VariableExprObj::VariableExprObj(std::string n) : name(std::move(n)) {}
 
@@ -126,7 +126,7 @@ bool VariableExprObj::equals(const Expr &other) const {
 }
 
 //==================================
-// BinaryExprObj 实现
+// BinaryExprObj Implementation
 //==================================
 BinaryExprObj::BinaryExprObj(Expr l, Expr r)
     : lhs(std::move(l)), rhs(std::move(r)) {}
@@ -147,7 +147,7 @@ bool BinaryExprObj::equals(const Expr &other) const {
 }
 
 //==================================
-// Achieve for simple binary expr
+// Implementation for simple binary expressions
 //==================================
 #define IMPLEMENT_BINARY_EXPR(CLASS, TYPE_ENUM, OP, STR)                       \
     ExprObj::Type CLASS::getType() const { return Type::TYPE_ENUM; }           \
@@ -185,7 +185,7 @@ IMPLEMENT_BINARY_EXPR(DivExprObj, DIV, /, " / ")
 IMPLEMENT_BINARY_EXPR(ModExprObj, MOD, %, " % ")
 
 //==================================
-// MinExprObj 实现
+// MinExprObj Implementation
 //==================================
 ExprObj::Type MinExprObj::getType() const { return Type::MIN; }
 
@@ -213,7 +213,7 @@ Expr MinExprObj::simplify() const {
 }
 
 //==================================
-// MaxExprObj 实现
+// MaxExprObj Implementation
 //==================================
 ExprObj::Type MaxExprObj::getType() const { return Type::MAX; }
 
@@ -241,7 +241,7 @@ Expr MaxExprObj::simplify() const {
 }
 
 //==================================
-// BaseExprObj 实现
+// BaseExprObj Implementation
 //==================================
 BaseExprObj::BaseExprObj() = default;
 
@@ -304,7 +304,7 @@ void BaseExprObj::insert(size_t pos, const Expr &value) {
 }
 
 //==================================
-// ShapeExprObj 实现
+// ShapeExprObj Implementation
 //==================================
 std::optional<std::vector<ShapeElem>> ShapeExprObj::evaluate(
     const std::unordered_map<std::string, ElementType> &values) const {
@@ -337,7 +337,7 @@ Shape ShapeExprObj::getConstantValue() const {
 }
 
 //==================================
-// StrideExprObj 实现
+// StrideExprObj Implementation
 //==================================
 std::optional<std::vector<StrideElem>> StrideExprObj::evaluate(
     const std::unordered_map<std::string, ElementType> &values) const {
@@ -370,7 +370,7 @@ Stride StrideExprObj::getConstantValue() const {
 }
 
 //==================================
-// ShapeExpr比较运算符实现
+// ShapeExpr Comparison Operator Implementation
 //==================================
 bool operator==(const ShapeExpr &lhs, const ShapeExpr &rhs) {
     return lhs->equals(rhs);

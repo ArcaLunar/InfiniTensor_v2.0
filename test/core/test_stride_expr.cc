@@ -7,7 +7,7 @@ class StrideExprTest : public testing::Test {
     void SetUp() override {}
 };
 
-// 测试步长计算
+// Test stride computation
 TEST_F(StrideExprTest, StrideComputation) {
     auto shape = ShapeExpr(
         new ShapeExprObj({ExprObj::constant(32), ExprObj::constant(224),
@@ -31,14 +31,14 @@ TEST_F(StrideExprTest, StrideComputation) {
     EXPECT_EQ(constantValue[3], 1);
 }
 
-// 测试符号步长
+// Test symbolic stride
 TEST_F(StrideExprTest, SymbolicStride) {
     auto batch = ExprObj::variable("batch");
     auto height = ExprObj::variable("height");
     auto width = ExprObj::constant(224);
     auto channels = ExprObj::constant(3);
 
-    // 符号步长计算
+    // Symbolic stride computation
     std::vector<Expr> strides = {height * width * channels, width * channels,
                                  channels, ExprObj::constant(1)};
 
@@ -47,12 +47,13 @@ TEST_F(StrideExprTest, SymbolicStride) {
     EXPECT_EQ(stride->toString(), "[((height * 224) * 3), (224 * 3), 3, 1]");
     EXPECT_FALSE(stride->isConcrete());
 
-    // 简化后的表达式
-    // TODO:目前不支持乘法交换律，因此无法简化
+    // Simplified expression
+    // TODO: Currently does not support multiplication commutative law, cannot
+    // simplify
     auto simplified = stride->simplify();
     EXPECT_EQ(simplified->toString(), "[((height * 224) * 3), 672, 3, 1]");
 
-    // 求值
+    // Evaluate
     auto env = std::unordered_map<std::string, ElementType>{{"height", 256}};
     auto result = stride->evaluate(env);
     EXPECT_TRUE(result.has_value());

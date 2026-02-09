@@ -77,7 +77,6 @@ void TensorObj::setData(void *data_) {
 void TensorObj::dataMalloc(const Runtime &runtime) {
     if (data == nullptr) {
         data = make_ref<BlobObj>(runtime->allocDevice(getTotalBytes()));
-        device = runtime->getCurrentThreadContext()->device;
     } else {
         if (runtime->getCurrentThreadContext()->device != device &&
             device == INFINI_DEVICE_CPU) {
@@ -87,6 +86,7 @@ void TensorObj::dataMalloc(const Runtime &runtime) {
             setData(data_ptr);
         }
     }
+    device = runtime->getCurrentThreadContext()->device;
 }
 
 ElementType TensorObj::getElement() const {
@@ -102,7 +102,7 @@ ElementType TensorObj::getStorageSize() const {
     size_t min_offset = 0;
     size_t storageSize = 1;
     if (constant_shape.empty()) {
-        return storageSize; // 标量 Tensor
+        return storageSize; // Scalar Tensor
     }
     for (auto i = 0; i < getRank(); ++i) {
         if (constant_stride[i] >= 0) {

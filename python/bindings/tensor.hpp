@@ -88,12 +88,8 @@ void bind_tensor(py::module &m) {
                  auto stride_vec = py::cast(stride);
                  auto dtype_str = dtype_to_string(data_type);
                  auto data_ptr_int = reinterpret_cast<uintptr_t>(data_ptr);
-                 return py::make_tuple(data_ptr_int,        // 数据指针
-                                       shape_vec,           // 形状
-                                       stride_vec,          // 步长
-                                       dtype_str,           // 数据类型字符串
-                                       self.getTotalBytes() // 存储大小
-                 );
+                 return py::make_tuple(data_ptr_int, shape_vec, stride_vec,
+                                       dtype_str, self.getTotalBytes());
              })
         .def("set_data",
              [](TensorObj &self, uintptr_t ptr, Runtime &runtime) {

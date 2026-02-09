@@ -15,7 +15,7 @@ class ElementWiseBasicTest : public testing::Test {
     }
 };
 
-// 测试ElementWise的基本构造
+// Test basic construction of ElementWise
 TEST_F(ElementWiseBasicTest, BasicConstruction) {
     auto A = graph->addTensor({2, 3, 4}, DataType(INFINI_DTYPE_F32));
     auto B = graph->addTensor({2, 3, 4}, DataType(INFINI_DTYPE_F32));
@@ -26,7 +26,7 @@ TEST_F(ElementWiseBasicTest, BasicConstruction) {
     EXPECT_EQ(elementwise->getElemenwiseOpType(), OpType::Add);
 }
 
-// 测试ElementWise形状推导 - 相同形状
+// Test ElementWise shape inference - same shape
 TEST_F(ElementWiseBasicTest, ShapeInferenceSameShape) {
     auto A = graph->addTensor({2, 3, 4}, DataType(INFINI_DTYPE_F32));
     auto B = graph->addTensor({2, 3, 4}, DataType(INFINI_DTYPE_F32));
@@ -47,9 +47,9 @@ TEST_F(ElementWiseBasicTest, ShapeInferenceSameShape) {
     EXPECT_EQ(shapeValues[2], 4);
 }
 
-// 测试ElementWise形状推导 - 广播（标量广播到张量）
+// Test ElementWise shape inference - broadcast (scalar to tensor)
 TEST_F(ElementWiseBasicTest, ShapeInferenceScalarBroadcast) {
-    // 标量广播到 [2, 3, 4]
+    // Scalar broadcasts to [2, 3, 4]
     auto scalar = graph->addTensor({1}, DataType(INFINI_DTYPE_F32));
     auto tensor = graph->addTensor({2, 3, 4}, DataType(INFINI_DTYPE_F32));
 
@@ -62,15 +62,16 @@ TEST_F(ElementWiseBasicTest, ShapeInferenceScalarBroadcast) {
     auto outputShape = (*inferredShapes)[0];
     auto shapeValues = outputShape->getConstantValue();
 
-    EXPECT_EQ(shapeValues.size(), 3); // 标量应该广播到 tensor 的维度
+    EXPECT_EQ(shapeValues.size(),
+              3); // Scalar should broadcast to tensor's dimension
     EXPECT_EQ(shapeValues[0], 2);
     EXPECT_EQ(shapeValues[1], 3);
     EXPECT_EQ(shapeValues[2], 4);
 }
 
-// 测试ElementWise形状推导 - 广播（两个操作数都需要广播）
+// Test ElementWise shape inference - broadcast (both operands need broadcast)
 TEST_F(ElementWiseBasicTest, ShapeInferenceBothBroadcast) {
-    // [1, 3, 1] 和 [2, 1, 4] 广播到 [2, 3, 4]
+    // [1, 3, 1] and [2, 1, 4] broadcast to [2, 3, 4]
     auto A = graph->addTensor({1, 3, 1}, DataType(INFINI_DTYPE_F32));
     auto B = graph->addTensor({2, 1, 4}, DataType(INFINI_DTYPE_F32));
 
@@ -88,7 +89,7 @@ TEST_F(ElementWiseBasicTest, ShapeInferenceBothBroadcast) {
     EXPECT_EQ(shapeValues[2], 4);
 }
 
-// 测试ElementWise数据类型推断
+// Test ElementWise data type inference
 TEST_F(ElementWiseBasicTest, DataTypeInference) {
     auto A = graph->addTensor({2, 3}, DataType(INFINI_DTYPE_F32));
     auto B = graph->addTensor({2, 3}, DataType(INFINI_DTYPE_F32));
@@ -100,7 +101,7 @@ TEST_F(ElementWiseBasicTest, DataTypeInference) {
     EXPECT_EQ(inferredTypes[0], DataType(INFINI_DTYPE_F32));
 }
 
-// 测试符号形状推导
+// Test symbolic shape inference
 TEST_F(ElementWiseBasicTest, SymbolicShapeInference) {
     auto batch = ExprObj::variable("batch");
     auto height = ExprObj::variable("h");
@@ -121,7 +122,7 @@ TEST_F(ElementWiseBasicTest, SymbolicShapeInference) {
     EXPECT_FALSE(outputShape->isConcrete());
     EXPECT_EQ(outputShape->size(), 3);
 
-    // 检查符号表达式
+    // Check symbolic expression
     EXPECT_EQ(outputShape->toString(), "[batch, h, 256]");
 }
 

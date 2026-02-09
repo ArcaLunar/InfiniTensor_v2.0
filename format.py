@@ -11,14 +11,26 @@ proj_path = Path(sys.path[0])
 def format_file(file):
     file = Path(proj_path.joinpath(file))
     print(file)
+
+    # Skip if file doesn't exist
+    if not file.exists():
+        print(f"Skipping: file does not exist - {file}")
+        return
+
     if file.suffix in c_style_file:
-        run(
-            f"clang-format -style=file -i {file}", cwd=proj_path, shell=True, check=True
-        )
-        run(f"git add {file}", cwd=proj_path, shell=True)
+        try:
+            run(
+                f"clang-format -style=file -i {file}", cwd=proj_path, shell=True, check=True
+            )
+            run(f"git add {file}", cwd=proj_path, shell=True)
+        except Exception as e:
+            print(f"Error formatting file {file}: {e}")
     elif file.suffix == py_file:
-        run(f"black {file}", cwd=proj_path, shell=True, check=True)
-        run(f"git add {file}", cwd=proj_path, shell=True)
+        try:
+            run(f"black {file}", cwd=proj_path, shell=True, check=True)
+            run(f"git add {file}", cwd=proj_path, shell=True)
+        except Exception as e:
+            print(f"Error formatting file {file}: {e}")
 
 
 if len(sys.argv) == 1:

@@ -2,49 +2,88 @@
 
 namespace infini {
 thread_local Context RuntimeObj::tls_context_cache = nullptr;
+thread_local std::thread::id RuntimeObj::tls_thread_id;
 
 Runtime &RuntimeObj::getInstance() {
     static Runtime instance = make_ref<RuntimeObj>();
     return instance;
 }
 
+RuntimeObj::~RuntimeObj() {
+    // Clean up all thread Contexts
+    std::unique_lock<std::shared_mutex> lock(ctx_mutex);
+    // Only clear the map, do not manually release CUDA resources
+    // CUDA runtime will automatically clean up all resources on program exit
+    threadContexts.clear();
+}
+
 void RuntimeObj::initThreadContext(infiniDevice_t device, int deviceId) {
-    // thread_local Context currentCtx;
-    if (tls_context_cache) {
+    auto current_tid = std::this_thread::get_id();
+    // Check for thread reuse
+    if (tls_context_cache && tls_thread_id == current_tid &&
+        tls_context_cache->device == device &&
+        tls_context_cache->deviceId == deviceId) {
         return;
     }
-    infinirtStream_t stream = nullptr;
+
     CHECK_INFINI_ERROR(infinirtSetDevice(device, deviceId));
+
+    // Create new stream
+    infinirtStream_t stream = nullptr;
     CHECK_INFINI_ERROR(infinirtStreamCreate(&stream));
+
+    // Create new Context
     Context ctx = std::make_shared<ContextObj>();
     ctx->device = device;
     ctx->deviceId = deviceId;
     ctx->stream = stream;
+    ctx->workspaceSize = 7ll << 30; // 7GB
+    ctx->workspace = nullptr;
+
+    // Update cache and global map
     tls_context_cache = ctx;
+    tls_thread_id = current_tid;
+
     {
         std::unique_lock<std::shared_mutex> lock(ctx_mutex);
-        threadContexts[std::this_thread::get_id()] = ctx;
+        threadContexts[current_tid] = ctx;
     }
+    CHECK_INFINI_ERROR(infinirtMalloc(&ctx->workspace, ctx->workspaceSize));
 }
 
 Context RuntimeObj::getCurrentThreadContext() const {
-    // thread_local Context currentCtx;
-    if (tls_context_cache) {
+    auto current_tid = std::this_thread::get_id();
+
+    // Check cache validity
+    if (tls_context_cache && tls_thread_id == current_tid) {
         return tls_context_cache;
     }
+
+    // Search in global map
     {
         std::shared_lock<std::shared_mutex> lock(ctx_mutex);
-        auto it = threadContexts.find(std::this_thread::get_id());
+        auto it = threadContexts.find(current_tid);
         if (it != threadContexts.end()) {
             tls_context_cache = it->second;
+            tls_thread_id = current_tid;
             return it->second;
         }
     }
-    throw std::runtime_error("Thread context not initialized!");
+
+    throw std::runtime_error(
+        "Thread context not initialized! Call initThreadContext() first.");
 }
 
 void RuntimeObj::setCurrentDevice(infiniDevice_t device, int deviceId) {
-    CHECK_INFINI_ERROR(infinirtSetDevice(device, deviceId));
+    auto ctx = getCurrentThreadContext();
+
+    // If device is the same, return directly
+    if (ctx->device == device && ctx->deviceId == deviceId) {
+        return;
+    }
+
+    // Re-initialize Context (force=true)
+    initThreadContext(device, deviceId);
 }
 
 void RuntimeObj::init() { CHECK_INFINI_ERROR(infinirtInit()); }
@@ -54,13 +93,15 @@ void RuntimeObj::getAllDeviceCount(int *count_array) {
 }
 
 void RuntimeObj::run(const Graph &graph) const {
+    auto ctx = getCurrentThreadContext();
+
     IT_ASSERT(graph->checkBeforRun());
-    // TODO: 目前仅支持单卡，后续支持多卡
+    // TODO: Currently only supports single device, multi-device support coming
+    // later
     const auto &kernelRegistry = KernelRegistry::getInstance();
     for (auto &op : graph->getOperators()) {
-        auto context = getCurrentThreadContext();
-        auto device = context->device;
-        auto kernelAttrs = KernelAttrs{device, op->getOpType().underlying()};
+        auto kernelAttrs =
+            KernelAttrs{ctx->device, op->getOpType().underlying()};
         Kernel *kernel = kernelRegistry.getKernel(kernelAttrs);
         kernel->compute(op, this);
     }
@@ -80,7 +121,7 @@ void *RuntimeObj::allocHost(size_t size) {
 }
 
 void *RuntimeObj::allocDevice(size_t size) {
-    void *ptr;
+    void *ptr = nullptr;
     CHECK_INFINI_ERROR(infinirtMalloc(&ptr, size));
     return ptr;
 }
@@ -95,6 +136,13 @@ void RuntimeObj::deallocDevice(void *ptr) {
 
 void RuntimeObj::memcpy(void *dst, const void *src, size_t size,
                         infinirtMemcpyKind_t kind) {
+    // Basic pointer validity check
+    if (dst == nullptr || src == nullptr) {
+        std::cerr << "[ERROR] memcpy called with null pointer!" << std::endl;
+        // Should throw exception or return error here, not continue
+        throw std::runtime_error("Null pointer in memcpy");
+    }
+
     CHECK_INFINI_ERROR(infinirtMemcpy(dst, src, size, kind));
 }
 
@@ -119,19 +167,22 @@ void RuntimeObj::synchronize() const {
 }
 
 void *RuntimeObj::getWorkspace(size_t size) const {
-    IT_ASSERT(size < getWorkspaceSize(), "Workspace size is too small");
-    return workspace;
+    auto ctx = getCurrentThreadContext();
+    if (!ctx->workspace) {
+        throw std::runtime_error(
+            "Workspace not initialized! Call initWorkspace() first.");
+    }
+    return ctx->workspace;
 }
 
-size_t RuntimeObj::getWorkspaceSize() const { return workspaceSize; }
+size_t RuntimeObj::getWorkspaceSize() const {
+    auto ctx = getCurrentThreadContext();
+    return ctx->workspaceSize;
+}
 
 bool RuntimeObj::isCpu() const {
     auto context = getCurrentThreadContext();
     return context->device == INFINI_DEVICE_CPU;
 }
 
-void RuntimeObj::allocworkspace() {
-    workspaceSize = 7ll << 30;
-    workspace = allocDevice(workspaceSize);
-}
 } // namespace infini

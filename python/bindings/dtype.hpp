@@ -13,25 +13,25 @@ namespace py = pybind11;
 namespace infini {
 void bind_data_type(py::module &m) {
     py::class_<DataType>(m, "DType")
-        // 构造函数
+        // Constructor
         .def(py::init<infiniDtype_t>())
 
-        // 方法
+        // Methods
         .def("get_size", &DataType::getSize, "Get the size in bytes")
         .def("get_type", &DataType::getType, "Get the underlying enum type")
         .def("to_string", &DataType::toString, "Get string representation")
 
-        // 属性（通过方法暴露）
+        // Properties (exposed through methods)
         .def_property_readonly("size", &DataType::getSize)
         .def_property_readonly("type", &DataType::getType)
         .def_property_readonly("name", &DataType::toString)
 
-        // 运算符重载
+        // Operator overloading
         .def(py::self == py::self)
         .def(py::self != py::self);
 }
 inline DataType dtype_from_string(const std::string &dtype_str) {
-    // 从字符串创建DataType
+    // Create DataType from string
     static std::unordered_map<std::string, infiniDtype_t> str_to_dtype = {
         {"byte", INFINI_DTYPE_BYTE},
         {"bool", INFINI_DTYPE_BOOL},
@@ -85,7 +85,7 @@ inline DataType dtype_from_string(const std::string &dtype_str) {
 }
 
 inline std::string dtype_to_string(const DataType &dtype) {
-    // 从DataType创建字符串
+    // Create string from DataType
     static std::unordered_map<infiniDtype_t, std::string> dtype_to_str = {
         {INFINI_DTYPE_BYTE, "byte"},       {INFINI_DTYPE_BOOL, "bool"},
         {INFINI_DTYPE_I8, "int8"},         {INFINI_DTYPE_I16, "int16"},
@@ -105,31 +105,11 @@ inline std::string dtype_to_string(const DataType &dtype) {
                              std::to_string(dtype.getType()));
 }
 
-// inline torch::ScalarType dtype_to_torch_scalar_type(const DataType &dtype) {
-//   static std::unordered_map<infiniDtype_t, torch::ScalarType> dtype_to_torch{
-//       {INFINI_DTYPE_BOOL, torch::kBool},    {INFINI_DTYPE_I8, torch::kInt8},
-//       {INFINI_DTYPE_I16, torch::kInt16},    {INFINI_DTYPE_I32,
-//       torch::kInt32}, {INFINI_DTYPE_I64, torch::kInt64},    {INFINI_DTYPE_U8,
-//       torch::kUInt8}, {INFINI_DTYPE_U16, torch::kUInt16}, {INFINI_DTYPE_U32,
-//       torch::kUInt32}, {INFINI_DTYPE_U64, torch::kUInt64}, {INFINI_DTYPE_F16,
-//       torch::kFloat16}, {INFINI_DTYPE_F32, torch::kFloat32},
-//       {INFINI_DTYPE_F64, torch::kFloat64}, {INFINI_DTYPE_BF16,
-//       torch::kBFloat16}};
-//   auto it = dtype_to_torch.find(dtype.getType());
-//   if (it != dtype_to_torch.end()) {
-//     return it->second;
-//   }
-//   throw std::runtime_error("Unsupported Convert DataType to torch: " +
-//                            dtype.toString());
-// }
-
 void bind_dtype_functions(py::module &m) {
     m.def("dtype_from_string", &dtype_from_string,
           "Create DataType from string", py::arg("dtype_str"))
         .def("dtype_to_string", &dtype_to_string, "Convert DataType to string",
              py::arg("dtype"));
-    // m.def("dtype_to_torch_scalar_type", &dtype_to_torch_scalar_type,
-    //       "Convert DataType to torch::ScalarType", py::arg("dtype"));
 }
 } // namespace infini
 

@@ -15,31 +15,33 @@ struct ContextObj {
     infiniDevice_t device = INFINI_DEVICE_CPU;
     int deviceId = 0;
     infinirtStream_t stream = nullptr;
+    void *workspace = nullptr;
+    size_t workspaceSize = 0;
 };
 using Context = Ref<ContextObj>;
 
 class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
   private:
-    // 全局 map: thread_id -> Context
     mutable std::unordered_map<std::thread::id, Context> threadContexts;
     mutable std::shared_mutex ctx_mutex;
     static thread_local Context tls_context_cache;
-    size_t workspaceSize;
-    void *workspace;
+    static thread_local std::thread::id tls_thread_id;
 
   public:
-    RuntimeObj() { allocworkspace(); }
+    RuntimeObj() = default;
     RuntimeObj(const RuntimeObj &) = delete;
     RuntimeObj &operator=(const RuntimeObj &) = delete;
+    ~RuntimeObj();
 
-    // 每个线程唯一的 Runtime
+    // Unique Runtime per thread
     static Runtime &getInstance();
 
-    // 每个线程初始化自己的 Context
+    // Initialize each thread's own Context
     void initThreadContext(infiniDevice_t device, int deviceId = 0);
 
-    // 获取活跃 Context
+    // Get active Context
     Context getCurrentThreadContext() const;
+    // Switch device for current thread
     void setCurrentDevice(infiniDevice_t device, int deviceId = 0);
 
     static void init();
@@ -56,15 +58,15 @@ class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
                      infinirtMemcpyKind_t kind, infinirtStream_t stream);
     void *mallocAsync(size_t size, infinirtStream_t stream);
     void freeAsync(void *ptr, infinirtStream_t stream);
+    // Synchronize device for current thread
     void synchronize() const;
+    // Get workspace of current Context
     size_t getWorkspaceSize() const;
     void *getWorkspace(size_t size) const;
 
     bool isCpu() const;
 
-    // string toString() const;
-  private:
-    void allocworkspace();
+    // void initWorkspace(size_t size = 7ll << 30);
 };
 } // namespace infini
 #endif // RUNTIME_H

@@ -16,6 +16,7 @@ class BlobObj {
     ~BlobObj() {};
 
     template <typename T> T getPtr() const { return reinterpret_cast<T>(ptr); }
+    void *getRawDataPtr() const { return ptr; }
 };
 
 } // namespace infini

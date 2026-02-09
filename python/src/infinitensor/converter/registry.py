@@ -12,7 +12,7 @@ class ConverterRegistry:
         self._method_converters: Dict[str, Dict[Optional[str], Callable]] = {}
 
     def register(self, op_name: str, overload: Optional[str] = None):
-        """装饰器：注册方法和函数转换器"""
+        """Decorator: register method and function converters"""
 
         def decorator(func):
             self._method_converters.setdefault(op_name, {})[overload] = func
@@ -20,8 +20,10 @@ class ConverterRegistry:
 
         return decorator
 
-    def get_method_converter(self, op_name: str, overload: Optional[str] = None) -> Optional[Callable]:
-        """获取方法和函数转换器"""
+    def get_method_converter(
+        self, op_name: str, overload: Optional[str] = None
+    ) -> Optional[Callable]:
+        """Get method and function converter"""
         if op_name in self._method_converters:
             table = self._method_converters[op_name]
             if overload:
@@ -37,9 +39,8 @@ class ConverterRegistry:
         else:
             raise ValueError(f"Unsupported op : {op_name}")
 
-
     def update(self, custom_converters: Dict):
-        """更新转换器
+        """Update converters
         Args:
             custom_converters:
             {
@@ -56,15 +57,15 @@ class ConverterRegistry:
                 raise TypeError(f"Invalid key type: {type(key)}")
 
     def clear(self):
-        """清空所有转换器"""
+        """Clear all converters"""
         self._method_converters.clear()
 
     def list_all_converters(self):
-        """列出所有转换器"""
+        """List all converters"""
         return {
             "methods": list(self._method_converters.keys()),
         }
 
 
-# 全局注册器实例
+# Global registry instance
 registry = ConverterRegistry()
