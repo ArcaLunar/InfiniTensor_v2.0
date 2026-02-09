@@ -11,7 +11,7 @@ class GraphBasicTest : public testing::Test {
     void SetUp() override { runtime = make_ref<RuntimeObj>(); }
 };
 
-// 测试Graph构造和运行时获取
+// Test Graph construction and runtime retrieval
 TEST_F(GraphBasicTest, GraphConstruction) {
     auto graph = make_ref<GraphObj>(runtime);
 
@@ -20,7 +20,7 @@ TEST_F(GraphBasicTest, GraphConstruction) {
     EXPECT_TRUE(graph->getOperators().empty());
 }
 
-// 测试添加常量形状Tensor
+// Test adding constant shape Tensor
 TEST_F(GraphBasicTest, AddConcreteTensor) {
     auto graph = make_ref<GraphObj>(runtime);
 
@@ -34,7 +34,7 @@ TEST_F(GraphBasicTest, AddConcreteTensor) {
     EXPECT_EQ(tensor2->getDataType(), DataType(INFINI_DTYPE_F16));
 }
 
-// 测试添加符号形状Tensor
+// Test adding symbolic shape Tensor
 TEST_F(GraphBasicTest, AddSymbolicTensor) {
     auto graph = make_ref<GraphObj>(runtime);
 
@@ -51,16 +51,16 @@ TEST_F(GraphBasicTest, AddSymbolicTensor) {
     EXPECT_TRUE(tensor->getShape()->isDynamic());
 }
 
-// 测试添加带步长的Tensor
+// Test adding Tensor with stride
 TEST_F(GraphBasicTest, AddTensorWithStride) {
     auto graph = make_ref<GraphObj>(runtime);
 
-    // 常量步长
+    // Constant stride
     auto tensor1 =
         graph->addTensor({2, 3, 4}, {12, 4, 1}, DataType(INFINI_DTYPE_F32));
     EXPECT_TRUE(tensor1->getStride()->isConcrete());
 
-    // 步长表达式
+    // Stride expression
     auto strideExpr = StrideExpr(new StrideExprObj(
         {ExprObj::constant(12), ExprObj::constant(4), ExprObj::constant(1)}));
     auto tensor2 =
@@ -68,7 +68,7 @@ TEST_F(GraphBasicTest, AddTensorWithStride) {
     EXPECT_TRUE(tensor2->getStride()->isConcrete());
 }
 
-// 测试批量添加Tensor
+// Test batch adding Tensors
 TEST_F(GraphBasicTest, AddTensorVector) {
     auto graph = make_ref<GraphObj>(runtime);
 
@@ -86,11 +86,11 @@ TEST_F(GraphBasicTest, AddTensorVector) {
     EXPECT_EQ(added[2], tensors[2]);
 }
 
-// 测试移除Tensor和Operator
+// Test removing Tensor and Operator
 TEST_F(GraphBasicTest, RemoveTensorAndOperator) {
     auto graph = make_ref<GraphObj>(runtime);
 
-    // 创建Tensor和Operator
+    // Create Tensor and Operator
     auto A = graph->addTensor({2, 3}, DataType(INFINI_DTYPE_F32));
     auto B = graph->addTensor({3, 4}, DataType(INFINI_DTYPE_F32));
     auto Y = graph->addTensor({1, 2, 4}, DataType(INFINI_DTYPE_F32));
@@ -99,11 +99,11 @@ TEST_F(GraphBasicTest, RemoveTensorAndOperator) {
     EXPECT_EQ(graph->getTensors().size(), 3);
     EXPECT_EQ(graph->getOperators().size(), 1);
 
-    // 移除Tensor
+    // Remove Tensor
     graph->removeTensor(A);
     EXPECT_EQ(graph->getTensors().size(), 2);
 
-    // 移除Operator
+    // Remove Operator
     graph->removeOperator(gemm);
     EXPECT_EQ(graph->getOperators().size(), 0);
 }

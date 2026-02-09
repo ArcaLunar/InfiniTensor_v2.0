@@ -14,7 +14,7 @@ class GemmBasicTest : public testing::Test {
     }
 };
 
-// 测试Gemm的基本构造
+// Test basic construction of Gemm
 TEST_F(GemmBasicTest, BasicConstruction) {
     auto A = graph->addTensor({2, 3}, DataType(INFINI_DTYPE_F32));
     auto B = graph->addTensor({3, 4}, DataType(INFINI_DTYPE_F32));
@@ -31,7 +31,7 @@ TEST_F(GemmBasicTest, BasicConstruction) {
     EXPECT_FALSE(gemm->getTransB());
 }
 
-// 测试Gemm形状推导（不转置）
+// Test Gemm shape inference (no transpose)
 TEST_F(GemmBasicTest, ShapeInferenceNoTranspose) {
     auto A = graph->addTensor({2, 3}, DataType(INFINI_DTYPE_F32));
     auto B = graph->addTensor({3, 4}, DataType(INFINI_DTYPE_F32));
@@ -52,7 +52,7 @@ TEST_F(GemmBasicTest, ShapeInferenceNoTranspose) {
     EXPECT_EQ(shapeValues[2], 4); // N
 }
 
-// 测试Gemm形状推导（双转置）
+// Test Gemm shape inference (both transpose)
 TEST_F(GemmBasicTest, ShapeInferenceBothTranspose) {
     auto A =
         graph->addTensor({3, 2}, DataType(INFINI_DTYPE_F32)); // A^T will be 2x3
@@ -72,7 +72,7 @@ TEST_F(GemmBasicTest, ShapeInferenceBothTranspose) {
     EXPECT_EQ(shapeValues[2], 4); // N from B^T
 }
 
-// 测试batch维度的广播
+// Test batch dimension broadcasting
 TEST_F(GemmBasicTest, ShapeInferenceBatchBroadcast) {
     // A: [1, M, K], B: [batch, K, N] -> [batch, M, N]
     auto A = graph->addTensor({1, 2, 3}, DataType(INFINI_DTYPE_F32));
@@ -88,17 +88,17 @@ TEST_F(GemmBasicTest, ShapeInferenceBatchBroadcast) {
     EXPECT_EQ(shapeValues[0], 5); // broadcast batch
 }
 
-// 测试K维度匹配检查
+// Test K dimension matching check
 TEST_F(GemmBasicTest, KDimensionMismatch) {
     auto A = graph->addTensor({2, 3}, DataType(INFINI_DTYPE_F32));
-    auto B =
-        graph->addTensor({5, 4},
-                         DataType(INFINI_DTYPE_F32)); // K维度不匹配：3 != 5
+    auto B = graph->addTensor(
+        {5, 4},
+        DataType(INFINI_DTYPE_F32)); // K dimension mismatch: 3 != 5
 
     EXPECT_THROW(graph->addOp<GemmObj>(A, B, nullptr, nullptr), Exception);
 }
 
-// 测试数据类型推断
+// Test data type inference
 TEST_F(GemmBasicTest, DataTypeInference) {
     auto A = graph->addTensor({2, 3}, DataType(INFINI_DTYPE_F32));
     auto B = graph->addTensor({3, 4}, DataType(INFINI_DTYPE_F32));

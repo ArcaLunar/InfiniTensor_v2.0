@@ -208,5 +208,13 @@ class StrideExprObj : public BaseExprObj {
     Stride getConstantValue() const;
 };
 
+inline std::string vecToString(const ShapeExpr &shape) {
+    return shape->toString();
+}
+
+inline std::string vecToString(const StrideExpr &stride) {
+    return stride->toString();
+}
+
 } // namespace infini
 #endif // EXPR_H

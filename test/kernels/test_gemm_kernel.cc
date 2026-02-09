@@ -1,18 +1,21 @@
 #include "core/runtime.h"
-#include "operators/ElementWise.h"
+#include "operators/Gemm.h"
 #include "utils/test_utils.h"
 #include "gtest/gtest.h"
 
 namespace infini {
 
 // Thread test parameters
-template <typename T> struct ThreadTestParams {
+template <typename T> struct GemmThreadTestParams {
     infiniDevice_t device = INFINI_DEVICE_CPU;
     int deviceId = 0;
-    OpType opType = OpType::Unknown;
     Shape shapeA;
     Shape shapeB;
     DataType dataType = DataType(INFINI_DTYPE_F32);
+    float alpha = 1.0f;
+    float beta = 0.0f;
+    bool transA = false;
+    bool transB = false;
     std::vector<T> inputAData;
     std::vector<T> inputBData;
     std::vector<T> outputData;
@@ -21,7 +24,8 @@ template <typename T> struct ThreadTestParams {
 };
 
 // Device thread function
-template <typename T> void deviceThreadFunc(ThreadTestParams<T> &params) {
+template <typename T>
+void gemmDeviceThreadFunc(GemmThreadTestParams<T> &params) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
 
@@ -32,10 +36,9 @@ template <typename T> void deviceThreadFunc(ThreadTestParams<T> &params) {
     Graph g = make_ref<GraphObj>(runtime);
     auto A = g->addTensor(params.shapeA, params.dataType);
     auto B = g->addTensor(params.shapeB, params.dataType);
-    auto op = g->addOp<ElementWiseObj>(params.opType, A, B, nullptr);
+    auto op = g->addOp<GemmObj>(A, B, nullptr, nullptr, params.alpha,
+                                params.beta, params.transA, params.transB);
 
-    // Set data first (set CPU pointer), then allocate memory (triggers H2D
-    // copy)
     A->setData(params.inputAData.data());
     B->setData(params.inputBData.data());
     runtime->dataMalloc(g);
@@ -74,40 +77,42 @@ template <typename T> void deviceThreadFunc(ThreadTestParams<T> &params) {
 
 // Data generator function type
 template <typename T>
-using DataGeneratorFunc = std::function<std::vector<T>(size_t, T, T)>;
+using GemmDataGeneratorFunc = std::function<std::vector<T>(size_t, T, T)>;
 
 // Run multi-thread test
 template <typename T>
-void runMultiThreadTest(
-    OpType opType, const Shape &shapeA, const Shape &shapeB,
-    const DataType &dataType,
-    DataGeneratorFunc<T> dataGenerator = generateRandomData<T>,
+void runGemmMultiThreadTest(
+    const Shape &shapeA, const Shape &shapeB, float alpha, float beta,
+    bool transA, bool transB, const DataType &dataType,
+    GemmDataGeneratorFunc<T> dataGenerator = generateSequentialData<T>,
     bool print = false) {
 
-    // Prepare input data - use utility function to simplify
+    // Prepare input data
     size_t elementA = 1, elementB = 1;
     for (auto dim : shapeA)
         elementA *= dim;
     for (auto dim : shapeB)
         elementB *= dim;
 
-    // Use the passed data generator function (default uses
-    // random data)
+    // Use the passed data generator function (default uses sequential data)
     auto inputAData =
-        dataGenerator(elementA, static_cast<T>(-10), static_cast<T>(10));
+        dataGenerator(elementA, static_cast<T>(1), static_cast<T>(1));
     auto inputBData =
-        dataGenerator(elementB, static_cast<T>(-10), static_cast<T>(10));
+        dataGenerator(elementB, static_cast<T>(1), static_cast<T>(1));
 
     // Create thread parameters
-    ThreadTestParams<T> cpuParams, gpuParams;
+    GemmThreadTestParams<T> cpuParams, gpuParams;
 
     // CPU thread parameters
     cpuParams.device = INFINI_DEVICE_CPU;
     cpuParams.deviceId = 0;
-    cpuParams.opType = opType;
     cpuParams.shapeA = shapeA;
     cpuParams.shapeB = shapeB;
     cpuParams.dataType = dataType;
+    cpuParams.alpha = alpha;
+    cpuParams.beta = beta;
+    cpuParams.transA = transA;
+    cpuParams.transB = transB;
     cpuParams.inputAData = inputAData;
     cpuParams.inputBData = inputBData;
     cpuParams.deviceName = "CPU";
@@ -115,21 +120,26 @@ void runMultiThreadTest(
     // GPU thread parameters
     gpuParams.device = INFINI_DEVICE_NVIDIA;
     gpuParams.deviceId = 0;
-    gpuParams.opType = opType;
     gpuParams.shapeA = shapeA;
     gpuParams.shapeB = shapeB;
     gpuParams.dataType = dataType;
+    gpuParams.alpha = alpha;
+    gpuParams.beta = beta;
+    gpuParams.transA = transA;
+    gpuParams.transB = transB;
     gpuParams.inputAData = inputAData;
     gpuParams.inputBData = inputBData;
     gpuParams.deviceName = "NVIDIA";
 
     if (print) {
         std::cout << "========================================" << std::endl;
-        std::cout << "Running Multi-Thread ElementWise Test" << std::endl;
-        std::cout << "OpType: " << opType.toString() << std::endl;
+        std::cout << "Running Multi-Thread Gemm Test" << std::endl;
         std::cout << "DataType: " << dataType.toString() << std::endl;
         std::cout << "Shape A: " << vecToString(shapeA) << std::endl;
         std::cout << "Shape B: " << vecToString(shapeB) << std::endl;
+        std::cout << "Alpha: " << alpha << ", Beta: " << beta << std::endl;
+        std::cout << "TransA: " << (transA ? "Yes" : "No")
+                  << ", TransB: " << (transB ? "Yes" : "No") << std::endl;
         std::cout << "Thread 1: CPU (" << dataType.toString() << ")"
                   << std::endl;
         std::cout << "Thread 2: NVIDIA (" << dataType.toString() << ")"
@@ -138,8 +148,8 @@ void runMultiThreadTest(
     }
 
     // Launch two threads for parallel execution
-    std::thread cpuThread(deviceThreadFunc<T>, std::ref(cpuParams));
-    std::thread gpuThread(deviceThreadFunc<T>, std::ref(gpuParams));
+    std::thread cpuThread(gemmDeviceThreadFunc<T>, std::ref(cpuParams));
+    std::thread gpuThread(gemmDeviceThreadFunc<T>, std::ref(gpuParams));
 
     // Wait for both threads to complete
     cpuThread.join();
@@ -155,7 +165,7 @@ void runMultiThreadTest(
     // Compare results
     size_t numErrors = 0;
     float maxError = 0.0f;
-    const float epsilon = 1e-3f;
+    const float epsilon = 1e-2f;
 
     for (size_t i = 0; i < cpuParams.outputData.size(); ++i) {
         float cpuVal, gpuVal;
@@ -175,7 +185,7 @@ void runMultiThreadTest(
 
         if (error > epsilon) {
             numErrors++;
-            if (numErrors <= 5) {
+            if (numErrors <= 5) { // Only print first 5 errors
                 std::cout << "Mismatch at index " << i << ": CPU=" << cpuVal
                           << ", NVIDIA=" << gpuVal << ", error=" << error
                           << std::endl;
@@ -198,113 +208,86 @@ void runMultiThreadTest(
         std::cout << "========================================" << std::endl;
     }
 
-    EXPECT_EQ(numErrors, 0) << "Results mismatch between "
-                               "CPU and NVIDIA (max error: "
-                            << maxError << ")";
+    EXPECT_EQ(numErrors, 0)
+        << "Results mismatch between CPU and NVIDIA (max error: " << maxError
+        << ")";
 }
 
-// Basic Add operation test - F32
-TEST(ElementWise, Add_MultiThread_F32) {
-    Shape shapeA = {3, 1};
-    Shape shapeB = {2, 3, 4};
+// Basic Gemm operation test - F32
+TEST(Gemm, Basic_MultiThread_F32) {
+    Shape shapeA = {3, 5};
+    Shape shapeB = {5, 2};
 
 #ifdef USE_CUDA
-    runMultiThreadTest<float>(OpType::Add, shapeA, shapeB,
-                              DataType(INFINI_DTYPE_F32));
+    runGemmMultiThreadTest<float>(shapeA, shapeB, 1.0f, 0.0f, false, false,
+                                  DataType(INFINI_DTYPE_F32));
 #else
     std::cout << "CUDA not enabled, skipping multi-thread test" << std::endl;
 #endif
 }
 
-// Basic Add operation test - F16
-TEST(ElementWise, Add_MultiThread_F16) {
-    Shape shapeA = {3, 1};
-    Shape shapeB = {2, 3, 4};
+// Basic Gemm operation test - F16
+TEST(Gemm, Basic_MultiThread_F16) {
+    Shape shapeA = {3, 5};
+    Shape shapeB = {5, 2};
 
 #ifdef USE_CUDA
-    runMultiThreadTest<uint16_t>(OpType::Add, shapeA, shapeB,
-                                 DataType(INFINI_DTYPE_F16),
-                                 generateSequentialData<uint16_t>, true);
+    runGemmMultiThreadTest<uint16_t>(shapeA, shapeB, 1.0f, 0.0f, false, false,
+                                     DataType(INFINI_DTYPE_F16),
+                                     generateSequentialData<uint16_t>, true);
 #else
     std::cout << "CUDA not enabled, skipping multi-thread test" << std::endl;
 #endif
 }
 
-// Basic Mul operation test - F32
-TEST(ElementWise, Mul_MultiThread_F32) {
-    Shape shapeA = {3, 4};
-    Shape shapeB = {3, 4};
+// Test with alpha and beta - F32
+TEST(Gemm, AlphaBeta_MultiThread_F32) {
+    Shape shapeA = {4, 6};
+    Shape shapeB = {6, 3};
 
 #ifdef USE_CUDA
-    runMultiThreadTest<float>(OpType::Mul, shapeA, shapeB,
-                              DataType(INFINI_DTYPE_F32));
+    runGemmMultiThreadTest<float>(shapeA, shapeB, 2.0f, 0.0f, false, false,
+                                  DataType(INFINI_DTYPE_F32));
 #endif
 }
 
-// Basic Mul operation test - F16
-TEST(ElementWise, Mul_MultiThread_F16) {
-    Shape shapeA = {3, 4};
-    Shape shapeB = {3, 4};
+// Large matrix test - F32
+TEST(Gemm, LargeMatrix_MultiThread_F32) {
+    Shape shapeA = {128, 256};
+    Shape shapeB = {256, 128};
 
 #ifdef USE_CUDA
-    runMultiThreadTest<uint16_t>(OpType::Mul, shapeA, shapeB,
-                                 DataType(INFINI_DTYPE_F16),
-                                 generateSequentialData<uint16_t>, false);
-#endif
-}
-
-// Basic Sub operation test - F32
-TEST(ElementWise, Sub_MultiThread_F32) {
-    Shape shapeA = {1, 5, 6};
-    Shape shapeB = {1, 5, 6};
-
-#ifdef USE_CUDA
-    runMultiThreadTest<float>(OpType::Sub, shapeA, shapeB,
-                              DataType(INFINI_DTYPE_F32));
-#endif
-}
-
-// Basic Sub operation test - F16
-TEST(ElementWise, Sub_MultiThread_F16) {
-    Shape shapeA = {1, 5, 6};
-    Shape shapeB = {1, 5, 6};
-
-#ifdef USE_CUDA
-    runMultiThreadTest<uint16_t>(OpType::Sub, shapeA, shapeB,
-                                 DataType(INFINI_DTYPE_F16),
-                                 generateSequentialData<uint16_t>, false);
+    runGemmMultiThreadTest<float>(shapeA, shapeB, 1.0f, 0.0f, false, false,
+                                  DataType(INFINI_DTYPE_F32),
+                                  generateRandomData<float>);
 #endif
 }
 
 // Single device test - CPU
-TEST(ElementWise, Add_SingleDevice_CPU) {
+TEST(Gemm, SingleDevice_CPU) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
     runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
 
-    Shape shapeA = {3, 1};
-    Shape shapeB = {2, 3, 4};
+    Shape shapeA = {3, 5};
+    Shape shapeB = {5, 2};
 
     Graph g = make_ref<GraphObj>(runtime);
     auto A = g->addTensor(shapeA, DataType(INFINI_DTYPE_F32));
     auto B = g->addTensor(shapeB, DataType(INFINI_DTYPE_F32));
-    auto op = g->addOp<ElementWiseObj>(OpType::Add, A, B, nullptr);
-
-    runtime->dataMalloc(g);
+    auto op =
+        g->addOp<GemmObj>(A, B, nullptr, nullptr, 1.0f, 0.0f, false, false);
 
     // Set input data
     std::vector<float> inputAData(A->getElement());
     std::vector<float> inputBData(B->getElement());
 
-    for (size_t i = 0; i < inputAData.size(); ++i) {
-        inputAData[i] = static_cast<float>(i + 1);
-    }
-    for (size_t i = 0; i < inputBData.size(); ++i) {
-        inputBData[i] = static_cast<float>(inputBData.size() - i);
-    }
+    std::iota(inputAData.begin(), inputAData.end(), 1);
+    std::iota(inputBData.begin(), inputBData.end(), 1);
 
     A->setData(inputAData.data());
     B->setData(inputBData.data());
+    runtime->dataMalloc(g);
 
     // Execute computation
     runtime->run(g);
@@ -317,29 +300,26 @@ TEST(ElementWise, Add_SingleDevice_CPU) {
 
 #ifdef USE_CUDA
 // Single device test - NVIDIA F32
-TEST(ElementWise, Add_SingleDevice_NVIDIA_F32) {
+TEST(Gemm, SingleDevice_NVIDIA_F32) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
     runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
-    Shape shapeA = {3, 1};
-    Shape shapeB = {2, 3, 4};
+    Shape shapeA = {3, 5};
+    Shape shapeB = {5, 2};
 
     Graph g = make_ref<GraphObj>(runtime);
     auto A = g->addTensor(shapeA, DataType(INFINI_DTYPE_F32));
     auto B = g->addTensor(shapeB, DataType(INFINI_DTYPE_F32));
-    auto op = g->addOp<ElementWiseObj>(OpType::Add, A, B, nullptr);
+    auto op =
+        g->addOp<GemmObj>(A, B, nullptr, nullptr, 1.0f, 0.0f, false, false);
 
     // Set input data
     std::vector<float> inputAData(A->getElement());
     std::vector<float> inputBData(B->getElement());
 
-    for (size_t i = 0; i < inputAData.size(); ++i) {
-        inputAData[i] = static_cast<float>(i + 1);
-    }
-    for (size_t i = 0; i < inputBData.size(); ++i) {
-        inputBData[i] = static_cast<float>(inputBData.size() - i);
-    }
+    std::iota(inputAData.begin(), inputAData.end(), 1);
+    std::iota(inputBData.begin(), inputBData.end(), 1);
 
     A->setData(inputAData.data());
     B->setData(inputBData.data());
@@ -355,29 +335,26 @@ TEST(ElementWise, Add_SingleDevice_NVIDIA_F32) {
 }
 
 // Single device test - NVIDIA F16
-TEST(ElementWise, Add_SingleDevice_NVIDIA_F16) {
+TEST(Gemm, SingleDevice_NVIDIA_F16) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
     runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
-    Shape shapeA = {3, 1};
-    Shape shapeB = {2, 3, 4};
+    Shape shapeA = {3, 5};
+    Shape shapeB = {5, 2};
 
     Graph g = make_ref<GraphObj>(runtime);
     auto A = g->addTensor(shapeA, DataType(INFINI_DTYPE_F16));
     auto B = g->addTensor(shapeB, DataType(INFINI_DTYPE_F16));
-    auto op = g->addOp<ElementWiseObj>(OpType::Add, A, B, nullptr);
+    auto op =
+        g->addOp<GemmObj>(A, B, nullptr, nullptr, 1.0f, 0.0f, false, false);
 
     // Set input data
     std::vector<uint16_t> inputAData(A->getElement());
     std::vector<uint16_t> inputBData(B->getElement());
 
-    for (size_t i = 0; i < inputAData.size(); ++i) {
-        inputAData[i] = static_cast<uint16_t>(i + 1);
-    }
-    for (size_t i = 0; i < inputBData.size(); ++i) {
-        inputBData[i] = static_cast<uint16_t>(inputBData.size() - i);
-    }
+    std::iota(inputAData.begin(), inputAData.end(), 1);
+    std::iota(inputBData.begin(), inputBData.end(), 1);
 
     A->setData(inputAData.data());
     B->setData(inputBData.data());

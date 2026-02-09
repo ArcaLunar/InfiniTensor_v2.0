@@ -102,7 +102,7 @@ ElementType TensorObj::getStorageSize() const {
     size_t min_offset = 0;
     size_t storageSize = 1;
     if (constant_shape.empty()) {
-        return storageSize; // 标量 Tensor
+        return storageSize; // Scalar Tensor
     }
     for (auto i = 0; i < getRank(); ++i) {
         if (constant_stride[i] >= 0) {

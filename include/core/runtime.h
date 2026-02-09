@@ -22,7 +22,6 @@ using Context = Ref<ContextObj>;
 
 class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
   private:
-    // 全局 map: thread_id -> Context
     mutable std::unordered_map<std::thread::id, Context> threadContexts;
     mutable std::shared_mutex ctx_mutex;
     static thread_local Context tls_context_cache;
@@ -34,15 +33,15 @@ class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
     RuntimeObj &operator=(const RuntimeObj &) = delete;
     ~RuntimeObj();
 
-    // 每个线程唯一的 Runtime
+    // Unique Runtime per thread
     static Runtime &getInstance();
 
-    // 每个线程初始化自己的 Context
+    // Initialize each thread's own Context
     void initThreadContext(infiniDevice_t device, int deviceId = 0);
 
-    // 获取活跃 Context
+    // Get active Context
     Context getCurrentThreadContext() const;
-    // 切换当前线程的设备
+    // Switch device for current thread
     void setCurrentDevice(infiniDevice_t device, int deviceId = 0);
 
     static void init();
@@ -59,9 +58,9 @@ class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
                      infinirtMemcpyKind_t kind, infinirtStream_t stream);
     void *mallocAsync(size_t size, infinirtStream_t stream);
     void freeAsync(void *ptr, infinirtStream_t stream);
-    // 同步当前线程的设备
+    // Synchronize device for current thread
     void synchronize() const;
-    // 获取当前 Context 的 workspace
+    // Get workspace of current Context
     size_t getWorkspaceSize() const;
     void *getWorkspace(size_t size) const;
 

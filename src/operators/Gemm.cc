@@ -44,7 +44,7 @@ optional<vector<ShapeExpr>> GemmObj::inferShape() {
     IT_ASSERT(shapeA->size() >= 2 && shapeB->size() >= 2);
     Expr batchA = (shapeA->size() == 3) ? (*shapeA)[0] : ExprObj::constant(1);
     Expr batchB = (shapeB->size() == 3) ? (*shapeB)[0] : ExprObj::constant(1);
-    // 广播 batch 维度
+    // broadcast batch dims
     Expr batch;
     if (batchA == batchB)
         batch = batchA;
