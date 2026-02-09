@@ -2,7 +2,6 @@
 
 TYPE ?= Release
 TEST ?= ON
-# 平台参数（CUDA / ASCEND / CPU / ...）
 PLATFORM ?= CPU
 USE_CUDA ?= OFF
 USE_ASCEND ?= OFF
@@ -10,16 +9,15 @@ USE_CAMBRICON ?= OFF
 USE_METAX ?= OFF
 USE_MOORE ?= OFF
 USE_ILUVATAR ?= OFF
-USE_SUGON ?= OFF
+USE_HYGON ?= OFF
 USE_KUNLUN ?= OFF
-# 通信开关（ON / OFF）
 COMM ?= OFF
 FORMAT_ORIGIN ?=
 
 CMAKE_OPT = -DCMAKE_BUILD_TYPE=$(TYPE)
 CMAKE_OPT += -DBUILD_TEST=$(TEST)
 
-# InfiniCore 仓库地址
+# InfiniCore repo address
 INFINICORE_URL = git@github.com:InfiniTensor/InfiniCore.git
 INFINICORE_DIR = InfiniCore
 CUR_DIR := $(shell pwd)
@@ -37,7 +35,7 @@ else ifeq ($(PLATFORM), CAMBRICON)
     XMAKE_PLATFORM_FLAG = --cambricon-mlu=y
 	USE_CAMBRICON = ON
 else ifeq ($(PLATFORM), METAX)
-    XMAKE_PLATFORM_FLAG = --metax-gpu=y
+    XMAKE_PLATFORM_FLAG = --metax-gpu=y --use-mc=y
 	USE_METAX = ON
 else ifeq ($(PLATFORM), MOORE)
     XMAKE_PLATFORM_FLAG = --moore-gpu=y
@@ -45,9 +43,9 @@ else ifeq ($(PLATFORM), MOORE)
 else ifeq ($(PLATFORM), ILUVATAR)
     XMAKE_PLATFORM_FLAG = --iluvatar-gpu=y
 	USE_ILUVATAR = ON
-else ifeq ($(PLATFORM), SUGON)
-    XMAKE_PLATFORM_FLAG = --sugon-dcu=y
-	USE_SUGON = ON
+else ifeq ($(PLATFORM), HYGON)
+    XMAKE_PLATFORM_FLAG = --hygon-dcu=y
+	USE_HYGON = ON
 else ifeq ($(PLATFORM), KUNLUN)
     XMAKE_PLATFORM_FLAG = --kunlun-xpu=y
 	USE_KUNLUN = ON
@@ -61,10 +59,10 @@ CMAKE_OPT += -DUSE_CAMBRICON=$(USE_CAMBRICON)
 CMAKE_OPT += -DUSE_METAX=$(USE_METAX)
 CMAKE_OPT += -DUSE_MOORE=$(USE_MOORE)
 CMAKE_OPT += -DUSE_ILUVATAR=$(USE_ILUVATAR)
-CMAKE_OPT += -DUSE_SUGON=$(USE_SUGON)
+CMAKE_OPT += -DUSE_HYGON=$(USE_HYGON)
 CMAKE_OPT += -DUSE_KUNLUN=$(USE_KUNLUN)
 
-# 通信参数
+# communication switch
 ifeq ($(COMM), ON)
     XMAKE_COMM_FLAG = --ccl=y
 else
@@ -77,11 +75,11 @@ check-infini:
 	@if [ -z "$$INFINI_ROOT" ]; then \
 		echo "[INFO] INFINI_ROOT 未设置，开始拉取 InfiniCore ..."; \
 		if [ ! -d "$(INFINICORE_DIR)" ]; then \
-			git clone $(INFINICORE_URL); \
+			git clone --recursive $(INFINICORE_URL); \
 		fi; \
 		echo "[INFO] 开始安装 InfiniCore (PLATFORM=$(PLATFORM), COMM=$(COMM)) ..."; \
 		cd $(INFINICORE_DIR) && python scripts/install.py $(XMAKE_FLAGS); \
-		echo "[INFO] 请运行 source ./start.sh 设置环境变量"; \
+		echo "[INFO] 请手动运行 source ./start.sh 设置环境变量"; \
 	else \
 		echo "[INFO] 检测到 INFINI_ROOT=$$INFINI_ROOT"; \
 	fi

@@ -39,7 +39,7 @@
 | METAX | 沐曦 MTX | `USE_METAX=ON` |
 | MOORE | 摩尔线程 Moore  | `USE_MOORE=ON` |
 | ILUVATAR | 天数智芯 | `USE_ILUVATAR=ON` |
-| SUGON | 曙光 DCU | `USE_SUGON=ON` |
+| HYGON | 海光 DCU | `USE_HYGON=ON` |
 | KUNLUN | 百度昆仑 XPU | `USE_KUNLUN=ON` |
 
 ---
