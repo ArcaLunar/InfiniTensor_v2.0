@@ -3,6 +3,15 @@
 
 namespace infini {
 
+static int normalizeAxis(int axis, size_t rank) {
+    int norm = axis;
+    if (norm < 0)
+        norm += static_cast<int>(rank);
+    IT_ASSERT(norm >= 0 && norm < static_cast<int>(rank),
+              "axis out of range in LayerNorm kernel");
+    return norm;
+}
+
 class LayerNormOp : public Kernel {
     void compute(const Operator &_op,
                  const RuntimeObj *runtime) const override {
@@ -17,15 +26,20 @@ class LayerNormOp : public Kernel {
         // Compute scratch buffer size for mean and std_dev tensors.
         // Their shape is input.shape[:axis] — the batch prefix.
         auto xShape = op->getInput(0)->getShape()->getConstantValue();
-        int axis = op->getAxis();
+        int axis = normalizeAxis(op->getAxis(), xShape.size());
+        IT_ASSERT(xShape.size() == 3,
+              "LayerNorm kernel only supports 3D input");
+        IT_ASSERT(axis == 2, "LayerNorm kernel only supports axis=2");
         size_t prefixElems = 1;
         for (int i = 0; i < axis; ++i)
             prefixElems *= (size_t)xShape[i];
+        size_t inputElems = prefixElems * (size_t)xShape.back();
         size_t elemBytes = op->getInput(0)->getDataType().getSize();
-        size_t scratchBytes = prefixElems * elemBytes;
+        size_t meanBytes = inputElems * elemBytes;
+        size_t stdBytes = prefixElems * elemBytes;
 
-        void *meanScratch = runtime->allocDevice(scratchBytes);
-        void *stdScratch = runtime->allocDevice(scratchBytes);
+        void *meanScratch = runtime->allocDevice(meanBytes);
+        void *stdScratch = runtime->allocDevice(stdBytes);
 
         size_t ws_size = 0;
         CHECK_INFINI_ERROR(infiniopGetLayerNormWorkspaceSize(

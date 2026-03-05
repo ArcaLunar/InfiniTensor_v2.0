@@ -64,14 +64,43 @@ void ClipObj::createOpDesc() {
         &xDesc, xShape->size(), xShape->getConstantValue().data(),
         xStride->getConstantValue().data(),
         inputs[0]->getDataType().getType()));
-    CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
-        &minDesc, minShape->size(), minShape->getConstantValue().data(),
-        minStride->getConstantValue().data(),
-        inputs[1]->getDataType().getType()));
-    CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
-        &maxDesc, maxShape->size(), maxShape->getConstantValue().data(),
-        maxStride->getConstantValue().data(),
-        inputs[2]->getDataType().getType()));
+
+    auto xShapeVals = xShape->getConstantValue();
+    auto minShapeVals = minShape->getConstantValue();
+    auto maxShapeVals = maxShape->getConstantValue();
+
+    auto countElems = [](const Shape &s) {
+        size_t prod = 1;
+        for (auto v : s)
+            prod *= v;
+        return prod;
+    };
+    bool minScalar = countElems(minShapeVals) == 1;
+    bool maxScalar = countElems(maxShapeVals) == 1;
+
+    if (minScalar && minShapeVals != xShapeVals) {
+        vector<ptrdiff_t> minStrideVals(xShapeVals.size(), 0);
+        CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
+            &minDesc, xShapeVals.size(), xShapeVals.data(),
+            minStrideVals.data(), inputs[1]->getDataType().getType()));
+    } else {
+        CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
+            &minDesc, minShape->size(), minShapeVals.data(),
+            minStride->getConstantValue().data(),
+            inputs[1]->getDataType().getType()));
+    }
+
+    if (maxScalar && maxShapeVals != xShapeVals) {
+        vector<ptrdiff_t> maxStrideVals(xShapeVals.size(), 0);
+        CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
+            &maxDesc, xShapeVals.size(), xShapeVals.data(),
+            maxStrideVals.data(), inputs[2]->getDataType().getType()));
+    } else {
+        CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
+            &maxDesc, maxShape->size(), maxShapeVals.data(),
+            maxStride->getConstantValue().data(),
+            inputs[2]->getDataType().getType()));
+    }
 
     infiniopHandle_t handle = nullptr;
     CHECK_INFINI_ERROR(infiniopCreateHandle(&handle));

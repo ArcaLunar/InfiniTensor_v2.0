@@ -3,6 +3,15 @@
 
 namespace infini {
 
+static int normalizeAxis(int axis, size_t rank) {
+    int norm = axis;
+    if (norm < 0)
+        norm += static_cast<int>(rank);
+    IT_ASSERT(norm >= 0 && norm < static_cast<int>(rank),
+              "axis out of range in Softmax");
+    return norm;
+}
+
 SoftmaxObj::SoftmaxObj(GraphObj *graph, Tensor input, Tensor output, int axis)
     : OperatorObj(OpType::Softmax, {input}, {output}), axis(axis) {
     IT_ASSERT(checkValid(graph));
@@ -35,6 +44,7 @@ void SoftmaxObj::createOpDesc() {
     auto xShape = inputs[0]->getShape();
     auto yStride = outputs[0]->getStride();
     auto xStride = inputs[0]->getStride();
+    int axisNorm = normalizeAxis(axis, xShape->size());
 
     infiniopTensorDescriptor_t yDesc, xDesc;
     CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
@@ -50,7 +60,7 @@ void SoftmaxObj::createOpDesc() {
     CHECK_INFINI_ERROR(infiniopCreateHandle(&handle));
     CHECK_INFINI_ERROR(infiniopCreateSoftmaxDescriptor(
         handle, (infiniopSoftmaxDescriptor_t *)&infiniOpDesc, yDesc, xDesc,
-        axis));
+        axisNorm));
 
     CHECK_INFINI_ERROR(infiniopDestroyTensorDescriptor(yDesc));
     CHECK_INFINI_ERROR(infiniopDestroyTensorDescriptor(xDesc));

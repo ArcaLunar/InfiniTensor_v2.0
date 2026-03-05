@@ -3,6 +3,15 @@
 
 namespace infini {
 
+static int normalizeAxis(int axis, size_t rank) {
+    int norm = axis;
+    if (norm < 0)
+        norm += static_cast<int>(rank);
+    IT_ASSERT(norm >= 0 && norm < static_cast<int>(rank),
+              "axis out of range in LPNorm");
+    return norm;
+}
+
 LPNormObj::LPNormObj(GraphObj *graph, Tensor input, Tensor output, int axis,
                      int p, float eps)
     : OperatorObj(OpType::LPNorm, {input}, {output}), axis(axis), p(p),
@@ -37,6 +46,7 @@ void LPNormObj::createOpDesc() {
     auto xShape = inputs[0]->getShape();
     auto yStride = outputs[0]->getStride();
     auto xStride = inputs[0]->getStride();
+    int axisNorm = normalizeAxis(axis, xShape->size());
 
     infiniopTensorDescriptor_t yDesc, xDesc;
     CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
@@ -51,8 +61,8 @@ void LPNormObj::createOpDesc() {
     infiniopHandle_t handle = nullptr;
     CHECK_INFINI_ERROR(infiniopCreateHandle(&handle));
     CHECK_INFINI_ERROR(infiniopCreateLPNormDescriptor(
-        handle, (infiniopLPNormDescriptor_t *)&infiniOpDesc, yDesc, xDesc, axis,
-        p, eps));
+        handle, (infiniopLPNormDescriptor_t *)&infiniOpDesc, yDesc, xDesc,
+        axisNorm, p, eps));
 
     CHECK_INFINI_ERROR(infiniopDestroyTensorDescriptor(yDesc));
     CHECK_INFINI_ERROR(infiniopDestroyTensorDescriptor(xDesc));

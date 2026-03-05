@@ -40,4 +40,19 @@ TEST_F(LogSoftmaxBasicTest, DataTypeInference) {
     EXPECT_EQ(dtypes[0], DataType(INFINI_DTYPE_F32));
 }
 
+// Symbolic shape inference: output carries symbolic dimensions unchanged
+TEST_F(LogSoftmaxBasicTest, SymbolicShapeInference) {
+    auto batch = ExprObj::variable("batch");
+    auto vocab = ExprObj::variable("vocab");
+    auto shapeX = ShapeExpr(new ShapeExprObj({batch, vocab}));
+    auto x = graph->addTensor(shapeX, DataType(INFINI_DTYPE_F32));
+    auto op = graph->addOp<LogSoftmaxObj>(x, nullptr);
+    auto shapes = op->inferShape();
+    ASSERT_TRUE(shapes.has_value());
+    auto outShape = (*shapes)[0];
+    EXPECT_FALSE(outShape->isConcrete());
+    EXPECT_EQ(outShape->size(), 2u);
+    EXPECT_EQ(outShape->toString(), "[batch, vocab]");
+}
+
 } // namespace infini

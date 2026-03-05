@@ -3,6 +3,15 @@
 
 namespace infini {
 
+static int normalizeAxis(int axis, size_t rank) {
+    int norm = axis;
+    if (norm < 0)
+        norm += static_cast<int>(rank);
+    IT_ASSERT(norm >= 0 && norm < static_cast<int>(rank),
+              "axis out of range in LayerNorm");
+    return norm;
+}
+
 // inputs = {input, weight, bias}, outputs = {y}
 LayerNormObj::LayerNormObj(GraphObj *graph, Tensor input, Tensor weight,
                            Tensor bias, Tensor output, int axis, float eps)
@@ -46,19 +55,25 @@ void LayerNormObj::createOpDesc() {
     auto bStride = inputs[2]->getStride();
     auto yStride = outputs[0]->getStride();
 
-    // Mean and std_dev have the shape of the "batch prefix": x.shape[:axis].
-    // Compute concrete shape values and contiguous strides for them.
     auto xVals = xShape->getConstantValue();
-    IT_ASSERT((int)xVals.size() >= axis,
-              "axis exceeds input rank in LayerNorm");
-    vector<int64_t> meanShape(xVals.begin(), xVals.begin() + axis);
-    // Contiguous strides for meanShape (row-major)
-    vector<int64_t> meanStride(axis, 1);
-    for (int i = axis - 2; i >= 0; --i)
-        meanStride[i] = meanStride[i + 1] * (int64_t)meanShape[i + 1];
-    // Convert to types expected by infiniopCreateTensorDescriptor
-    vector<size_t> meanShapeSz(meanShape.begin(), meanShape.end());
-    vector<ptrdiff_t> meanStrideP(meanStride.begin(), meanStride.end());
+    IT_ASSERT(xVals.size() == 3, "LayerNorm only supports 3D input");
+    int axisNorm = normalizeAxis(axis, xVals.size());
+    IT_ASSERT(axisNorm == 2, "LayerNorm only supports axis=2 for 3D input");
+    size_t featureSize = xVals.back();
+    auto wVals = wShape->getConstantValue();
+    auto bVals = bShape->getConstantValue();
+    IT_ASSERT(wVals.size() == 1 && wVals[0] == featureSize,
+              "LayerNorm weight must be 1D and match last dimension");
+    IT_ASSERT(bVals.size() == 1 && bVals[0] == featureSize,
+              "LayerNorm bias must be 1D and match last dimension");
+
+    // Std deviation descriptor uses prefix shape: x.shape[:-1].
+    vector<int64_t> stdShape(xVals.begin(), xVals.end() - 1);
+    vector<int64_t> stdStride(stdShape.size(), 1);
+    for (int i = (int)stdShape.size() - 2; i >= 0; --i)
+        stdStride[i] = stdStride[i + 1] * (int64_t)stdShape[i + 1];
+    vector<size_t> stdShapeSz(stdShape.begin(), stdShape.end());
+    vector<ptrdiff_t> stdStrideP(stdStride.begin(), stdStride.end());
 
     infiniDtype_t dtype = inputs[0]->getDataType().getType();
 
@@ -66,13 +81,14 @@ void LayerNormObj::createOpDesc() {
     CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
         &yDesc, yShape->size(), yShape->getConstantValue().data(),
         yStride->getConstantValue().data(), dtype));
-    // mean/std descriptors (same shape/stride/dtype as batch prefix)
+    // input_standardization matches input shape/stride
     CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
-        &meanDesc, (uint64_t)axis, meanShapeSz.data(),
-        meanStrideP.data(), dtype));
+        &meanDesc, xShape->size(), xShape->getConstantValue().data(),
+        xStride->getConstantValue().data(), dtype));
+    // input_std_deviation uses prefix shape (ndim-1)
     CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
-        &stdDesc, (uint64_t)axis, meanShapeSz.data(),
-        meanStrideP.data(), dtype));
+        &stdDesc, (uint64_t)stdShapeSz.size(), stdShapeSz.data(),
+        stdStrideP.data(), dtype));
     CHECK_INFINI_ERROR(infiniopCreateTensorDescriptor(
         &xDesc, xShape->size(), xShape->getConstantValue().data(),
         xStride->getConstantValue().data(), dtype));
