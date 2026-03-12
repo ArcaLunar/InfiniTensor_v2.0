@@ -82,7 +82,7 @@ def convert_softplus(translator, node):
 # aten._softmax / aten._log_softmax are the lowered forms after torch.export
 # ---------------------------------------------------------------------------
 
-@registry.register("_softmax", "default")
+@registry.register("softmax", "int")
 def convert_softmax(translator, node):
     # args: (input, dim, half_to_float)
     x = translator.tensors[node.args[0]]
@@ -90,7 +90,7 @@ def convert_softmax(translator, node):
     translator.tensors[node] = translator.builder.softmax(x, axis)
 
 
-@registry.register("_log_softmax", "default")
+@registry.register("log_softmax", "int")
 def convert_log_softmax(translator, node):
     # args: (input, dim, half_to_float)
     x = translator.tensors[node.args[0]]
@@ -103,15 +103,15 @@ def convert_log_softmax(translator, node):
 #                             transposed, output_padding, groups)
 # ---------------------------------------------------------------------------
 
-@registry.register("convolution", "default")
+@registry.register("conv2d", "default")
 def convert_conv(translator, node):
     args = node.args
     x = translator.tensors[args[0]]
     w = translator.tensors[args[1]]
-    bias = translator.tensors[args[2]] if args[2] is not None else None
-    strides = list(args[3])
-    pads = list(args[4])
-    dilations = list(args[5])
+    bias = translator.tensors[args[2]] if len(args) > 2 and args[2] is not None else None
+    strides = list(args[3]) if len(args) > 3 else list(node.kwargs.get("stride", [1, 1]))
+    pads = list(args[4]) if len(args) > 4 else list(node.kwargs.get("padding", [0, 0]))
+    dilations = list(args[5]) if len(args) > 5 else list(node.kwargs.get("dilation", [1, 1]))
     # args[6] = transposed — skip (not supported by ConvObj)
     translator.tensors[node] = translator.builder.conv(x, w, bias, pads, strides, dilations)
 
@@ -131,7 +131,7 @@ def convert_layer_norm(translator, node):
     bias_t = translator.tensors[args[3]] if args[3] is not None else None
     eps = float(args[4]) if len(args) > 4 and args[4] is not None else 1e-5
     # axis = rank - len(normalized_shape)
-    rank = len(x.shape())
+    rank = len(node.args[0].meta["tensor_meta"].shape)
     axis = rank - len(args[1])
     translator.tensors[node] = translator.builder.layer_norm(
         x, weight, bias_t, axis=axis, eps=eps
@@ -157,14 +157,18 @@ def _make_scalar_tensor(translator, value, ref_tensor):
     """Create a scalar (shape=[]) tensor with the same dtype as ref_tensor."""
     dtype = ref_tensor.dtype()
     t = translator.builder.tensor(ShapeExpr([]), dtype)
-    buf = torch.tensor(value).to(
-        dtype=getattr(torch, dtype_from_string.__module__.split('.')[0])
-    )
-    import ctypes
-    # Create a 1-element torch tensor, set its data into the scalar tensor
-    scalar_torch = torch.tensor(float(value))
+    scalar_torch = torch.tensor(float(value), dtype=torch.float32)
+    translator._owned_torch_tensors.append(scalar_torch)
     t.set_data(scalar_torch.data_ptr(), translator.runtime)
     return t
+
+
+def _to_optional_bound_tensor(translator, bound_arg, ref_tensor):
+    if bound_arg is None:
+        return None
+    if bound_arg in translator.tensors:
+        return translator.tensors[bound_arg]
+    return _make_scalar_tensor(translator, bound_arg, ref_tensor)
 
 
 @registry.register("clamp", "default")
@@ -174,8 +178,8 @@ def convert_clamp(translator, node):
     x = translator.tensors[args[0]]
     min_val = args[1] if len(args) > 1 else kwargs.get("min", None)
     max_val = args[2] if len(args) > 2 else kwargs.get("max", None)
-    min_t = _make_scalar_tensor(translator, min_val, x) if min_val is not None else None
-    max_t = _make_scalar_tensor(translator, max_val, x) if max_val is not None else None
+    min_t = _to_optional_bound_tensor(translator, min_val, x)
+    max_t = _to_optional_bound_tensor(translator, max_val, x)
     translator.tensors[node] = translator.builder.clip(x, min_t, max_t)
 
 
@@ -183,8 +187,8 @@ def convert_clamp(translator, node):
 def convert_clip(translator, node):
     args = node.args
     x = translator.tensors[args[0]]
-    min_t = translator.tensors[args[1]] if len(args) > 1 and args[1] is not None else None
-    max_t = translator.tensors[args[2]] if len(args) > 2 and args[2] is not None else None
+    min_t = _to_optional_bound_tensor(translator, args[1] if len(args) > 1 else None, x)
+    max_t = _to_optional_bound_tensor(translator, args[2] if len(args) > 2 else None, x)
     translator.tensors[node] = translator.builder.clip(x, min_t, max_t)
 
 
@@ -193,6 +197,7 @@ def convert_clip(translator, node):
 # aten.linalg_vector_norm.default: (input, ord=2, dim=None, keepdim=False, dtype=None)
 # ---------------------------------------------------------------------------
 
+@registry.register("linalg_norm", "default")
 @registry.register("linalg_vector_norm", "default")
 def convert_lp_norm(translator, node):
     args = node.args

@@ -35,6 +35,7 @@ class TorchFXTranslator:
         self.dynamic_input_infos: List[Tuple[Tuple, Tuple, str]] = (
             []
         )  # Dynamic input information (shape, stride, dtype)
+        self._owned_torch_tensors: List[torch.Tensor] = []
         if custom_converters:
             registry.update(custom_converters)
 
@@ -136,7 +137,10 @@ class TorchFXTranslator:
                 ):
                     # Handle symbolic dimension
                     sym_str = str(st)
-                    assert self.symbols.get(sym_str)
+                    # Stride symbol may appear before its matching shape symbol
+                    # (for example 3D contiguous tensors). Register lazily.
+                    if not self.symbols.get(sym_str):
+                        self._add_symbol(sym_str, i, j)
                     tensor_stride.insert(0, self.symbols[sym_str]["var"])
                 else:
                     # Concrete dimension
@@ -330,7 +334,7 @@ class TorchFXTranslator:
                     else:
                         if self.symbols[shape_ele]["value"] != s:
                             raise ValueError(
-                                f"The input {i}, dim {j} shape should equal {s}, but is {self.symbols[shape_ele]['value']}"
+                                f"The input {i}, dim {j} shape should equal {self.symbols[shape_ele]['value']}, but is {s}"
                             )
                 else:
                     if s != shape_ele:
