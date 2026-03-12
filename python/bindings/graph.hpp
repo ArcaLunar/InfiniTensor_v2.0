@@ -32,6 +32,9 @@ void bind_graph_builder(py::module &m) {
         // define clip operator
         .def("clip", &GraphBuilderObj::clip, py::arg("input"),
              py::arg("min_val"), py::arg("max_val"),
+             py::arg("output") = py::none())
+        .def("layernorm", &GraphBuilderObj::layernorm, py::arg("input"),
+             py::arg("weight"), py::arg("bias"), py::arg("eps") = 1e-5,
              py::arg("output") = py::none());
 }
 

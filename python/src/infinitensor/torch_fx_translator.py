@@ -14,6 +14,7 @@ from torch.export import export, Dim
 from typing import Callable, Dict, List, Tuple, Optional, Union
 from .converter import registry
 import inspect
+import re
 
 
 class TorchFXTranslator:
@@ -26,6 +27,7 @@ class TorchFXTranslator:
         )  # Store fx.Node mapping relationship, whether Tensor or Callable
         self.tensors: Dict[fx.Node, Tensor] = {}  # Store all tensors
         self.params: Dict[torch.Tensor, Tensor] = {}  # Store all parameters
+        self.const_tensors: List[torch.Tensor] = []  # Keep converter-created constants alive
         self.outputs: List[Tensor] = []  # Store output tensors
         self.input_vars: Dict[str, Tensor] = {}
         self.symbols = (
@@ -150,11 +152,13 @@ class TorchFXTranslator:
             op_name = str(target._overloadpacket).split(".")[-1]
             overload = target._overloadname
             function = registry.get_method_converter(op_name, overload)
+            func_name = f"{op_name}.{overload}"
         else:
             if hasattr(target, "__name__"):
                 op_base_name = target.__name__
             else:
                 op_base_name = str(target)
+            func_name = op_base_name
             function = registry.get_method_converter(op_base_name)
         if function:
             try:
@@ -257,7 +261,11 @@ class TorchFXTranslator:
         return fake_inputs
 
     def import_from_fx(
-        self, model, input_list: List[torch.Tensor], is_real_tensor: bool = False
+        self,
+        model,
+        input_list: List[torch.Tensor],
+        is_real_tensor: bool = False,
+        dynamic_shapes: Optional[Dict] = None,
     ):
         """
         Import FX graph to computation graph framework
@@ -268,7 +276,8 @@ class TorchFXTranslator:
         """
 
         self.builder = GraphBuilder(self.runtime)
-        dynamic_shapes = self._add_dynamic_shapes(model, input_list)
+        if dynamic_shapes is None:
+            dynamic_shapes = self._add_dynamic_shapes(model, input_list)
         try:
             self.module = export(
                 model, tuple(input_list), dynamic_shapes=dynamic_shapes

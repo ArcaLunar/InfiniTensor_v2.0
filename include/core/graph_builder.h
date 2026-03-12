@@ -7,6 +7,7 @@
 #include "operators/Clip.h"
 #include "operators/ElementWise.h"
 #include "operators/Gemm.h"
+#include "operators/LayerNorm.h"
 
 namespace infini {
 
@@ -28,6 +29,8 @@ class GraphBuilderObj {
     Tensor mul(Tensor A, Tensor B, std::optional<Tensor> Y = std::nullopt);
     Tensor clip(Tensor input, Tensor min_val, Tensor max_val,
                 std::optional<Tensor> output = std::nullopt);
+    Tensor layernorm(Tensor input, Tensor weight, Tensor bias, float eps = 1e-5,
+                     std::optional<Tensor> output = std::nullopt);
     string printGraph() const;
 
     Graph getGraph() const;

@@ -22,6 +22,7 @@ struct OpType {
 
         // Custom operators
         Clip,
+        LayerNorm,
     } type;
 
     constexpr OpType(decltype(type) t) : type(t) {}
@@ -50,6 +51,7 @@ struct OpType {
 
             // Custom operators
             CASE(Clip);
+            CASE(LayerNorm);
         default:
             return "Unknown";
         }

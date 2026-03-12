@@ -63,6 +63,21 @@ Tensor GraphBuilderObj::clip(Tensor input, Tensor min_val, Tensor max_val,
     }
 }
 
+Tensor GraphBuilderObj::layernorm(Tensor input, Tensor weight, Tensor bias,
+                                  float eps, std::optional<Tensor> output) {
+    if (output.has_value()) {
+        g->addOpWithOutputs<LayerNormObj>(std::move(input), std::move(weight),
+                                          std::move(bias),
+                                          std::move(output.value()), eps);
+        return output.value();
+    } else {
+        return g
+            ->addOp<LayerNormObj>(std::move(input), std::move(weight),
+                                  std::move(bias), nullptr, eps)
+            ->getOutput(0);
+    }
+}
+
 string GraphBuilderObj::printGraph() const { return g->toString(); }
 
 Graph GraphBuilderObj::getGraph() const { return g; }

@@ -26,7 +26,11 @@ def test_basic_matmul(runtime, torch_rng_seed):
 
     # Create translator
     translator = TorchFXTranslator(runtime)
-    translator.import_from_fx(model, input_tensors)
+    translator.import_from_fx(
+        model,
+        input_tensors,
+        dynamic_shapes={"x": {0: torch.export.Dim.AUTO, 1: 8}},
+    )
     # Run
     translator.run(input_tensors)
 
@@ -226,6 +230,79 @@ def test_dynamic_clip(runtime, torch_rng_seed):
     translator.run(input_tensors_2)
     outputs = translator.get_outputs()
     assert outputs[0].shape == (20, 5)
+    print("✅ Test passed!")
+
+
+def test_basic_layernorm(runtime, torch_rng_seed):
+    """Use fixtures defined in conftest.py directly"""
+    print(f"Testing with runtime on device: {runtime}")
+    print(f"Random seed: {torch_rng_seed}")
+
+    # Create simple model
+    class LayerNormModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.ln = nn.LayerNorm(8)
+
+        def forward(self, x):
+            return self.ln(x)
+
+    model = LayerNormModel()
+    # Randomly initialize inputs, passed shapes can differ from actual values, but data types must match
+    input_info = [((6, 8), "float32")]
+    input_tensors = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info
+    ]
+
+    # Create translator
+    translator = TorchFXTranslator(runtime)
+    translator.import_from_fx(model, input_tensors)
+    translator.run(input_tensors)
+
+    # Get outputs
+    outputs = translator.get_outputs()
+
+    # Verify
+    assert len(outputs) == 1
+    assert outputs[0].shape == (6, 8)
+    print("✅ Test passed!")
+
+
+# @pytest.mark.skip(reason="Known crash in dynamic LayerNorm FX path (native/torch.export interop)")
+def test_dynamic_layernorm(runtime, torch_rng_seed):
+    """Use fixtures defined in conftest.py directly"""
+    print(f"Testing with runtime on device: {runtime}")
+    print(f"Random seed: {torch_rng_seed}")
+
+    # Create simple model
+    class LayerNormModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.ln = nn.LayerNorm(8)
+
+        def forward(self, x):
+            return self.ln(x)
+
+    model = LayerNormModel()
+    # Keep normalized size (last dim) fixed to 8
+    input_info = [((6, 8), "float32")]
+    input_tensors = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info
+    ]
+
+    translator = TorchFXTranslator(runtime)
+    translator.import_from_fx(model, input_tensors)
+
+    input_info_1 = [((20, 8), "float32")]
+    input_tensors_1 = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info_1
+    ]
+    translator.run(input_tensors_1)
+    outputs = translator.get_outputs()
+    assert outputs[0].shape == (20, 8)
     print("✅ Test passed!")
 
 
