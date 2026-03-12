@@ -26,6 +26,7 @@ class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
     mutable std::shared_mutex ctx_mutex;
     static thread_local Context tls_context_cache;
     static thread_local std::thread::id tls_thread_id;
+    void ensureWorkspace(size_t size) const;
 
   public:
     RuntimeObj() = default;
@@ -65,8 +66,6 @@ class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
     void *getWorkspace(size_t size) const;
 
     bool isCpu() const;
-
-    // void initWorkspace(size_t size = 7ll << 30);
 };
 } // namespace infini
 #endif // RUNTIME_H

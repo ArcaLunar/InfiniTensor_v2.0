@@ -103,7 +103,7 @@ def convert_log_softmax(translator, node):
 #                             transposed, output_padding, groups)
 # ---------------------------------------------------------------------------
 
-@registry.register("convolution", "default")
+@registry.register("conv2d", "default")
 def convert_conv(translator, node):
     args = node.args
     x = translator.tensors[args[0]]

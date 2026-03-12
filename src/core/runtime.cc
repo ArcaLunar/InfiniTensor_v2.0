@@ -37,7 +37,7 @@ void RuntimeObj::initThreadContext(infiniDevice_t device, int deviceId) {
     ctx->device = device;
     ctx->deviceId = deviceId;
     ctx->stream = stream;
-    ctx->workspaceSize = 7ll << 30; // 7GB
+    ctx->workspaceSize = 0;
     ctx->workspace = nullptr;
 
     // Update cache and global map
@@ -48,7 +48,28 @@ void RuntimeObj::initThreadContext(infiniDevice_t device, int deviceId) {
         std::unique_lock<std::shared_mutex> lock(ctx_mutex);
         threadContexts[current_tid] = ctx;
     }
-    CHECK_INFINI_ERROR(infinirtMalloc(&ctx->workspace, ctx->workspaceSize));
+}
+
+void RuntimeObj::ensureWorkspace(size_t size) const {
+    if (size == 0) {
+        return;
+    }
+
+    auto ctx = getCurrentThreadContext();
+    if (ctx->workspace != nullptr && ctx->workspaceSize >= size) {
+        return;
+    }
+
+    CHECK_INFINI_ERROR(infinirtSetDevice(ctx->device, ctx->deviceId));
+
+    if (ctx->workspace != nullptr) {
+        CHECK_INFINI_ERROR(infinirtFree(ctx->workspace));
+        ctx->workspace = nullptr;
+        ctx->workspaceSize = 0;
+    }
+
+    CHECK_INFINI_ERROR(infinirtMalloc(&ctx->workspace, size));
+    ctx->workspaceSize = size;
 }
 
 Context RuntimeObj::getCurrentThreadContext() const {
@@ -167,11 +188,12 @@ void RuntimeObj::synchronize() const {
 }
 
 void *RuntimeObj::getWorkspace(size_t size) const {
-    auto ctx = getCurrentThreadContext();
-    if (!ctx->workspace) {
-        throw std::runtime_error(
-            "Workspace not initialized! Call initWorkspace() first.");
+    if (size == 0) {
+        return nullptr;
     }
+
+    ensureWorkspace(size);
+    auto ctx = getCurrentThreadContext();
     return ctx->workspace;
 }
 
