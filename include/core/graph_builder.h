@@ -4,6 +4,7 @@
 
 #include "core/graph.h"
 #include "core/op_type.h"
+#include "operators/Clip.h"
 #include "operators/ElementWise.h"
 #include "operators/Gemm.h"
 
@@ -25,6 +26,8 @@ class GraphBuilderObj {
     Tensor add(Tensor A, Tensor B, std::optional<Tensor> Y = std::nullopt);
     Tensor sub(Tensor A, Tensor B, std::optional<Tensor> Y = std::nullopt);
     Tensor mul(Tensor A, Tensor B, std::optional<Tensor> Y = std::nullopt);
+    Tensor clip(Tensor input, Tensor min_val, Tensor max_val,
+                std::optional<Tensor> output = std::nullopt);
     string printGraph() const;
 
     Graph getGraph() const;

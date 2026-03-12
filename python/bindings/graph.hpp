@@ -28,7 +28,11 @@ void bind_graph_builder(py::module &m) {
         .def("mul", &GraphBuilderObj::mul, py::arg("A"), py::arg("B"),
              py::arg("Y") = py::none())
         .def("to_string", &GraphBuilderObj::printGraph)
-        .def_property_readonly("graph", &GraphBuilderObj::getGraph);
+        .def_property_readonly("graph", &GraphBuilderObj::getGraph)
+        // define clip operator
+        .def("clip", &GraphBuilderObj::clip, py::arg("input"),
+             py::arg("min_val"), py::arg("max_val"),
+             py::arg("output") = py::none());
 }
 
 } // namespace infini

@@ -11,7 +11,6 @@ struct OpType {
         Unknown,
         Add,
         Cast,
-        Clip,
         Concat,
         Div,
         Gemm,
@@ -21,6 +20,8 @@ struct OpType {
         Sub,
         Transpose,
 
+        // Custom operators
+        Clip,
     } type;
 
     constexpr OpType(decltype(type) t) : type(t) {}
@@ -42,12 +43,13 @@ struct OpType {
             CASE(Mul);
             CASE(Div);
             CASE(Cast);
-            CASE(Clip);
             CASE(Relu);
             CASE(Transpose);
             CASE(Concat);
             CASE(MatMul);
 
+            // Custom operators
+            CASE(Clip);
         default:
             return "Unknown";
         }

@@ -113,6 +113,122 @@ def test_basic_elementwise(runtime, torch_rng_seed):
     print("✅ Test passed!")
 
 
+def test_dynamic_elementwise(runtime, torch_rng_seed):
+    """Use fixtures defined in conftest.py directly"""
+    print(f"Testing with runtime on device: {runtime}")
+    print(f"Random seed: {torch_rng_seed}")
+
+    # Create simple model
+    class AddModel(torch.nn.Module):
+        def forward(self, x, y):
+            return x + y
+
+    model = AddModel()
+    # Randomly initialize inputs, passed shapes can differ from actual values, but data types must match
+    input_info = [((5, 4), "float32"), ((5, 4), "float32")]
+    input_tensors = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info
+    ]
+
+    # Create translator
+    translator = TorchFXTranslator(runtime)
+    translator.import_from_fx(model, input_tensors)
+
+    input_info_1 = [((10, 8), "float32"), ((10, 8), "float32")]
+    input_tensors_1 = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info_1
+    ]
+    translator.run(input_tensors_1)
+    outputs = translator.get_outputs()
+    assert outputs[0].shape == (10, 8)
+
+    input_info_2 = [((4, 2), "float32"), ((4, 2), "float32")]
+    input_tensors_2 = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info_2
+    ]
+    translator.run(input_tensors_2)
+    outputs = translator.get_outputs()
+    assert outputs[0].shape == (4, 2)
+    print("✅ Test passed!")
+
+
+def test_basic_clip(runtime, torch_rng_seed):
+    """Use fixtures defined in conftest.py directly"""
+    print(f"Testing with runtime on device: {runtime}")
+    print(f"Random seed: {torch_rng_seed}")
+
+    # Create simple model
+    class ClipModel(torch.nn.Module):
+        def forward(self, x, min_val, max_val):
+            return torch.clip(x, min_val, max_val)
+
+    model = ClipModel()
+    # Randomly initialize inputs, passed shapes can differ from actual values, but data types must match
+    input_info = [((54,), "float32"), ((54,), "float32"), ((54,), "float32")]
+    input_tensors = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info
+    ]
+
+    # Create translator
+    translator = TorchFXTranslator(runtime)
+    translator.import_from_fx(model, input_tensors)
+    translator.run(input_tensors)
+
+    # Get outputs
+    outputs = translator.get_outputs()
+
+    # Verify
+    assert len(outputs) == 1
+    assert outputs[0].shape == (54,)
+    print("✅ Test passed!")
+
+
+def test_dynamic_clip(runtime, torch_rng_seed):
+    """Use fixtures defined in conftest.py directly"""
+    print(f"Testing with runtime on device: {runtime}")
+    print(f"Random seed: {torch_rng_seed}")
+
+    # Create simple model
+    class ClipModel(torch.nn.Module):
+        def forward(self, x, min_val, max_val):
+            return torch.clip(x, min_val, max_val)
+
+    model = ClipModel()
+    # Randomly initialize inputs, passed shapes can differ from actual values, but data types must match
+    input_info = [((54, 44), "float32"), ((54, 44), "float32"), ((54, 44), "float32")]
+    input_tensors = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info
+    ]
+
+    # Create translator
+    translator = TorchFXTranslator(runtime)
+    translator.import_from_fx(model, input_tensors)
+
+    input_info_1 = [((100, 1), "float32"), ((100, 1), "float32"), ((100, 1), "float32")]
+    input_tensors_1 = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info_1
+    ]
+    translator.run(input_tensors_1)
+    outputs = translator.get_outputs()
+    assert outputs[0].shape == (100, 1)
+
+    input_info_2 = [((20, 5), "float32"), ((20, 5), "float32"), ((20, 5), "float32")]
+    input_tensors_2 = [
+        torch.as_tensor(np.random.randn(*shape).astype(dtype))
+        for shape, dtype in input_info_2
+    ]
+    translator.run(input_tensors_2)
+    outputs = translator.get_outputs()
+    assert outputs[0].shape == (20, 5)
+    print("✅ Test passed!")
+
+
 if __name__ == "__main__":
     # Can run this file directly
     import sys
