@@ -120,7 +120,7 @@ void *RuntimeObj::allocHost(size_t size) {
     return ptr;
 }
 
-void *RuntimeObj::allocDevice(size_t size) {
+void *RuntimeObj::allocDevice(size_t size) const {
     void *ptr = nullptr;
     CHECK_INFINI_ERROR(infinirtMalloc(&ptr, size));
     return ptr;
@@ -130,7 +130,7 @@ void RuntimeObj::deallocHost(void *ptr) {
     CHECK_INFINI_ERROR(infinirtFreeHost(ptr));
 }
 
-void RuntimeObj::deallocDevice(void *ptr) {
+void RuntimeObj::deallocDevice(void *ptr) const {
     CHECK_INFINI_ERROR(infinirtFree(ptr));
 }
 

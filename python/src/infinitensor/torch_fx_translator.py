@@ -1,4 +1,5 @@
 import ctypes
+import re
 import pyinfinitensor
 from pyinfinitensor import (
     GraphBuilder,
@@ -11,7 +12,7 @@ from pyinfinitensor import (
 import torch
 from torch import fx
 from torch.export import export, Dim
-from typing import Callable, Dict, List, Tuple, Optional, Union
+from typing import Any, Callable, Dict, List, Tuple, Optional, Union
 from .converter import registry
 import inspect
 
@@ -149,12 +150,14 @@ class TorchFXTranslator:
         if hasattr(target, "_overloadpacket"):
             op_name = str(target._overloadpacket).split(".")[-1]
             overload = target._overloadname
+            func_name = f"{op_name}.{overload}"
             function = registry.get_method_converter(op_name, overload)
         else:
             if hasattr(target, "__name__"):
                 op_base_name = target.__name__
             else:
                 op_base_name = str(target)
+            func_name = op_base_name
             function = registry.get_method_converter(op_base_name)
         if function:
             try:
@@ -174,6 +177,7 @@ class TorchFXTranslator:
                 self.outputs.append(self.tensors[arg])
         else:
             self.outputs.append(self.tensors[args[0]])
+        self.builder.set_outputs(self.outputs)
 
     def _retrieve_args(self, node):
         if isinstance(node, fx.Node):

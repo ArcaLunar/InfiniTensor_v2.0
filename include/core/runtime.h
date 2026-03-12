@@ -49,9 +49,9 @@ class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
     void run(const Graph &graph) const;
     void dataMalloc(const Graph &graph);
     void *allocHost(size_t size);
-    void *allocDevice(size_t size);
+    void *allocDevice(size_t size) const;
     void deallocHost(void *ptr);
-    void deallocDevice(void *ptr);
+    void deallocDevice(void *ptr) const;
     void memcpy(void *dst, const void *src, size_t size,
                 infinirtMemcpyKind_t kind);
     void memcpyAsync(void *dst, const void *src, size_t size,

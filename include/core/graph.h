@@ -11,6 +11,7 @@ class GraphObj : public Object {
   protected:
     Runtime runtime;
     TensorVec tensors;
+    TensorVec outputs;
     OpVec ops;
 
   public:
@@ -28,12 +29,21 @@ class GraphObj : public Object {
     void removeOperator(Operator op);
     void removeTensor(Tensor tensor);
     const TensorVec &getTensors() const;
+    const TensorVec &getOutputs() const;
     const OpVec &getOperators() const;
     Tensor getTensor(int) const;
     Runtime getRuntime() const;
+    TensorVec getInputTensors() const;
     bool topo_sort();
 
     void shape_infer();
+    void setOutputs(const TensorVec &newOutputs);
+    void addOutput(const Tensor &tensor);
+    void clearOutputs();
+    void optimize();
+    void replaceAllUses(const Tensor &oldTensor, const Tensor &newTensor);
+    bool eraseOperator(const Operator &op);
+    bool eraseTensorIfUnused(const Tensor &tensor);
 
     template <typename T, typename... Args> Ref<T> addOp(Args &&...args) {
         Ref<T> op = infini::make_ref<T>(this, std::forward<Args>(args)...);
@@ -53,6 +63,7 @@ class GraphObj : public Object {
 
   private:
     void addOperatorAndConnect(const Operator &op);
+    void rebuildConnections();
 };
 
 } // namespace infini
