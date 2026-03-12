@@ -11,7 +11,12 @@ namespace py = pybind11;
 
 namespace infini {
 void bind_graph_builder(py::module &m) {
-    py::class_<GraphObj, std::shared_ptr<GraphObj>>(m, "Graph");
+    py::class_<GraphObj, std::shared_ptr<GraphObj>>(m, "Graph")
+        .def("optimize", &GraphObj::optimize)
+        .def("set_outputs", &GraphObj::setOutputs, py::arg("outputs"))
+        .def("get_outputs", &GraphObj::getOutputs,
+             py::return_value_policy::reference_internal)
+        .def("to_string", &GraphObj::toString);
     // GraphBuilder
     py::class_<GraphBuilderObj>(m, "GraphBuilder")
         .def(py::init<Runtime>())
@@ -27,6 +32,8 @@ void bind_graph_builder(py::module &m) {
              py::arg("Y") = py::none())
         .def("mul", &GraphBuilderObj::mul, py::arg("A"), py::arg("B"),
              py::arg("Y") = py::none())
+        .def("set_outputs", &GraphBuilderObj::set_outputs, py::arg("outputs"))
+        .def("optimize", &GraphBuilderObj::optimize)
         .def("to_string", &GraphBuilderObj::printGraph)
         .def_property_readonly("graph", &GraphBuilderObj::getGraph);
 }

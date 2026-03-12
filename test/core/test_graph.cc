@@ -18,6 +18,7 @@ TEST_F(GraphBasicTest, GraphConstruction) {
     EXPECT_EQ(graph->getRuntime(), runtime);
     EXPECT_TRUE(graph->getTensors().empty());
     EXPECT_TRUE(graph->getOperators().empty());
+    EXPECT_TRUE(graph->getOutputs().empty());
 }
 
 // Test adding constant shape Tensor
@@ -106,5 +107,16 @@ TEST_F(GraphBasicTest, RemoveTensorAndOperator) {
     // Remove Operator
     graph->removeOperator(gemm);
     EXPECT_EQ(graph->getOperators().size(), 0);
+}
+
+TEST_F(GraphBasicTest, SetOutputs) {
+    auto graph = make_ref<GraphObj>(runtime);
+    auto input = graph->addTensor({2, 2}, DataType(INFINI_DTYPE_F32));
+
+    graph->setOutputs({input});
+
+    ASSERT_EQ(graph->getOutputs().size(), 1);
+    EXPECT_EQ(graph->getOutputs()[0], input);
+    EXPECT_TRUE(graph->checkValid());
 }
 } // namespace infini

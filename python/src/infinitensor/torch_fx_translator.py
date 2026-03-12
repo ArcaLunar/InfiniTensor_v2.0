@@ -174,6 +174,7 @@ class TorchFXTranslator:
                 self.outputs.append(self.tensors[arg])
         else:
             self.outputs.append(self.tensors[args[0]])
+        self.builder.set_outputs(self.outputs)
 
     def _retrieve_args(self, node):
         if isinstance(node, fx.Node):

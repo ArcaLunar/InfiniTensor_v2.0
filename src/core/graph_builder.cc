@@ -48,6 +48,12 @@ DEFINE_BINARY_OP(add, OpType::Add);
 DEFINE_BINARY_OP(sub, OpType::Sub);
 DEFINE_BINARY_OP(mul, OpType::Mul);
 
+void GraphBuilderObj::set_outputs(const TensorVec &outputs) {
+    g->setOutputs(outputs);
+}
+
+void GraphBuilderObj::optimize() { g->optimize(); }
+
 string GraphBuilderObj::printGraph() const { return g->toString(); }
 
 Graph GraphBuilderObj::getGraph() const { return g; }
