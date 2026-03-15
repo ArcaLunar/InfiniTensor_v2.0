@@ -298,6 +298,64 @@ TEST(Gemm, SingleDevice_CPU) {
     output->printData(runtime);
 }
 
+TEST(Gemm, SameThread_CPUThenNVIDIAWorkspaceReinit) {
+    RuntimeObj::init();
+    Runtime &runtime = RuntimeObj::getInstance();
+
+    {
+        runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+
+        Shape shapeA = {3, 5};
+        Shape shapeB = {5, 2};
+
+        Graph g = make_ref<GraphObj>(runtime);
+        auto A = g->addTensor(shapeA, DataType(INFINI_DTYPE_F32));
+        auto B = g->addTensor(shapeB, DataType(INFINI_DTYPE_F32));
+        auto op = g->addOp<GemmObj>(A, B, nullptr, nullptr, 1.0f, 0.0f,
+                                    false, false);
+
+        std::vector<float> inputAData(A->getElement());
+        std::vector<float> inputBData(B->getElement());
+
+        std::iota(inputAData.begin(), inputAData.end(), 1);
+        std::iota(inputBData.begin(), inputBData.end(), 1);
+
+        A->setData(inputAData.data());
+        B->setData(inputBData.data());
+        runtime->dataMalloc(g);
+        runtime->run(g);
+
+        EXPECT_NE(op->getOutput(0)->getData(), nullptr);
+    }
+
+#ifdef USE_CUDA
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
+
+    Shape shapeA = {3, 5};
+    Shape shapeB = {5, 2};
+
+    Graph g = make_ref<GraphObj>(runtime);
+    auto A = g->addTensor(shapeA, DataType(INFINI_DTYPE_F32));
+    auto B = g->addTensor(shapeB, DataType(INFINI_DTYPE_F32));
+    auto op =
+        g->addOp<GemmObj>(A, B, nullptr, nullptr, 1.0f, 0.0f, false, false);
+
+    std::vector<float> inputAData(A->getElement());
+    std::vector<float> inputBData(B->getElement());
+
+    std::iota(inputAData.begin(), inputAData.end(), 1);
+    std::iota(inputBData.begin(), inputBData.end(), 1);
+
+    A->setData(inputAData.data());
+    B->setData(inputBData.data());
+    runtime->dataMalloc(g);
+    runtime->run(g);
+
+    EXPECT_NE(runtime->getWorkspace(1), nullptr);
+    EXPECT_NE(op->getOutput(0)->getData(), nullptr);
+#endif
+}
+
 #ifdef USE_CUDA
 // Single device test - NVIDIA F32
 TEST(Gemm, SingleDevice_NVIDIA_F32) {
