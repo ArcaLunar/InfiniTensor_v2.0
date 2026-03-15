@@ -1,5 +1,9 @@
 #include "core/graph_optimizer.h"
 
+#include "operators/Clip.h"
+#include "operators/Softmax.h"
+#include "operators/Unary.h"
+
 #include "utils/utils.h"
 #include <cmath>
 #include <memory>
@@ -19,6 +23,17 @@ bool isScalarConstantValue(const Tensor &tensor, float expected) {
         return false;
     }
     return std::fabs(tensor->getRawDataPtr<float *>()[0] - expected) < 1e-6f;
+}
+
+optional<float> getScalarConstantValue(const Tensor &tensor) {
+    if (!tensorHasConcreteF32Data(tensor) || tensor->getElement() != 1) {
+        return {};
+    }
+    return tensor->getRawDataPtr<float *>()[0];
+}
+
+bool isIdentityUnaryOp(OpType opType) {
+    return opType == OpType::Relu;
 }
 
 class TopologicalSortPass final : public GraphPass {
@@ -70,7 +85,7 @@ class ConstantFoldPass final : public GraphPass {
             auto *buffer = new float[numel];
 
             if (op->getOpType() == OpType::Add || op->getOpType() == OpType::Sub ||
-                op->getOpType() == OpType::Mul) {
+                op->getOpType() == OpType::Mul || op->getOpType() == OpType::Div) {
                 auto lhs = op->getInput(0);
                 auto rhs = op->getInput(1);
                 const auto lhsStride =
@@ -95,8 +110,81 @@ class ConstantFoldPass final : public GraphPass {
                     case OpType::Mul:
                         buffer[i] = lhsPtr[lhsOffset] * rhsPtr[rhsOffset];
                         break;
+                    case OpType::Div:
+                        buffer[i] = lhsPtr[lhsOffset] / rhsPtr[rhsOffset];
+                        break;
                     default:
                         IT_ASSERT(false, "Unexpected elementwise op");
+                    }
+                }
+            } else if (op->getOpType() == OpType::Clip) {
+                auto input = op->getInput(0);
+                auto minVal = op->getInput(1);
+                auto maxVal = op->getInput(2);
+
+                const auto inStride =
+                    broadcastStride(input->getShape(), input->getStride(), output->getShape())
+                        ->getConstantValue();
+                const auto minStride =
+                    broadcastStride(minVal->getShape(), minVal->getStride(), output->getShape())
+                        ->getConstantValue();
+                const auto maxStride =
+                    broadcastStride(maxVal->getShape(), maxVal->getStride(), output->getShape())
+                        ->getConstantValue();
+                const auto *inPtr = input->getRawDataPtr<float *>();
+                const auto *minPtr = minVal->getRawDataPtr<float *>();
+                const auto *maxPtr = maxVal->getRawDataPtr<float *>();
+
+                for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
+                    auto inOffset = calculateLinearOffset(i, outShape, inStride);
+                    auto minOffset = calculateLinearOffset(i, outShape, minStride);
+                    auto maxOffset = calculateLinearOffset(i, outShape, maxStride);
+                    auto clipped = std::max(inPtr[inOffset], minPtr[minOffset]);
+                    buffer[i] = std::min(clipped, maxPtr[maxOffset]);
+                }
+            } else if (isIdentityUnaryOp(op->getOpType())) {
+                auto input = op->getInput(0);
+                const auto inStride =
+                    broadcastStride(input->getShape(), input->getStride(), output->getShape())
+                        ->getConstantValue();
+                const auto *inPtr = input->getRawDataPtr<float *>();
+
+                for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
+                    auto inOffset = calculateLinearOffset(i, outShape, inStride);
+                    buffer[i] = std::max(inPtr[inOffset], 0.0f);
+                }
+            } else if (op->getOpType() == OpType::Sigmoid ||
+                       op->getOpType() == OpType::Silu ||
+                       op->getOpType() == OpType::Gelu ||
+                       op->getOpType() == OpType::Softplus ||
+                       op->getOpType() == OpType::Tanh) {
+                auto input = op->getInput(0);
+                const auto inStride =
+                    broadcastStride(input->getShape(), input->getStride(), output->getShape())
+                        ->getConstantValue();
+                const auto *inPtr = input->getRawDataPtr<float *>();
+
+                for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
+                    auto inOffset = calculateLinearOffset(i, outShape, inStride);
+                    const float x = inPtr[inOffset];
+                    switch (op->getOpType().underlying()) {
+                    case OpType::Sigmoid:
+                        buffer[i] = 1.0f / (1.0f + std::exp(-x));
+                        break;
+                    case OpType::Silu:
+                        buffer[i] = x / (1.0f + std::exp(-x));
+                        break;
+                    case OpType::Gelu:
+                        buffer[i] = 0.5f * x * (1.0f + std::erf(x / std::sqrt(2.0f)));
+                        break;
+                    case OpType::Softplus:
+                        buffer[i] = std::log1p(std::exp(x));
+                        break;
+                    case OpType::Tanh:
+                        buffer[i] = std::tanh(x);
+                        break;
+                    default:
+                        IT_ASSERT(false, "Unexpected unary op");
                     }
                 }
             } else {
@@ -137,6 +225,64 @@ class IdentityEliminationPass final : public GraphPass {
                 } else if (isScalarConstantValue(op->getInput(1), 1.0f)) {
                     replacement = op->getInput(0);
                 }
+            } else if (op->getOpType() == OpType::Div) {
+                if (isScalarConstantValue(op->getInput(1), 1.0f)) {
+                    replacement = op->getInput(0);
+                }
+            } else if (op->getOpType() == OpType::Clip) {
+                auto minVal = getScalarConstantValue(op->getInput(1));
+                auto maxVal = getScalarConstantValue(op->getInput(2));
+                if (minVal.has_value() && maxVal.has_value() &&
+                    std::isinf(*minVal) && *minVal < 0.0f && std::isinf(*maxVal) &&
+                    *maxVal > 0.0f) {
+                    replacement = op->getInput(0);
+                }
+            }
+
+            if (!replacement) {
+                continue;
+            }
+
+            auto output = op->getOutput(0);
+            graph.replaceAllUses(output, replacement);
+            graph.eraseOperator(op);
+            graph.eraseTensorIfUnused(output);
+            changed = true;
+        }
+        return changed;
+    }
+};
+
+class IdempotenceEliminationPass final : public GraphPass {
+  public:
+    string name() const override { return "IdempotenceEliminationPass"; }
+
+    bool run(GraphObj &graph) override {
+        bool changed = false;
+        auto ops = graph.getOperators();
+        for (const auto &op : ops) {
+            Tensor replacement = nullptr;
+            if (op->getNumInputs() < 1 || op->getNumOutputs() != 1) {
+                continue;
+            }
+            auto input = op->getInput(0);
+            if (!input) {
+                continue;
+            }
+            auto source = input->getSource();
+            if (!source) {
+                continue;
+            }
+
+            if (op->getOpType() == OpType::Relu &&
+                source->getOpType() == OpType::Relu) {
+                replacement = input;
+            } else if (op->getOpType() == OpType::Clip &&
+                       source->getOpType() == OpType::Clip &&
+                       op->getNumInputs() == 3 && source->getNumInputs() == 3 &&
+                       op->getInput(1) == source->getInput(1) &&
+                       op->getInput(2) == source->getInput(2)) {
+                replacement = input;
             }
 
             if (!replacement) {
@@ -222,6 +368,7 @@ void GraphOptimizer::run(GraphObj &graph) const {
     passes.emplace_back(std::make_unique<ShapeInferPass>());
     passes.emplace_back(std::make_unique<ConstantFoldPass>());
     passes.emplace_back(std::make_unique<IdentityEliminationPass>());
+    passes.emplace_back(std::make_unique<IdempotenceEliminationPass>());
     passes.emplace_back(std::make_unique<DeadCodeEliminationPass>());
     passes.emplace_back(std::make_unique<TopologicalSortPass>());
     passes.emplace_back(std::make_unique<ShapeInferPass>());
