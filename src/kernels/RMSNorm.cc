@@ -1,5 +1,5 @@
-#include "core/runtime.h"
 #include "operators/RMSNorm.h"
+#include "core/runtime.h"
 
 namespace infini {
 
@@ -7,7 +7,9 @@ class RMSNormOp : public Kernel {
     void compute(const Operator &_op,
                  const RuntimeObj *runtime) const override {
         auto op = as<RMSNormObj>(_op);
-        op->createOpDesc();
+        if (op->getInfiniOpDesc() == nullptr) {
+            op->createOpDesc();
+        }
         void *yData = op->getOutput(0)->getRawDataPtr<void *>();
         void *const xData = op->getInput(0)->getRawDataPtr<void *>();
         void *const wData = op->getInput(1)->getRawDataPtr<void *>();

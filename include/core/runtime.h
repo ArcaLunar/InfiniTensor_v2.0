@@ -27,6 +27,10 @@ class RuntimeObj : public std::enable_shared_from_this<RuntimeObj> {
     static thread_local Context tls_context_cache;
     static thread_local std::thread::id tls_thread_id;
     void ensureWorkspace(size_t size) const;
+    void runOperators(const Graph &graph, const Context &ctx) const;
+    bool isCudaGraphSupported(const Context &ctx) const;
+    void compileCudaGraph(const Graph &graph, const Context &ctx) const;
+    void launchCudaGraph(const Graph &graph, const Context &ctx) const;
 
   public:
     RuntimeObj() = default;

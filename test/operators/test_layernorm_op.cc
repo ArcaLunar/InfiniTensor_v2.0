@@ -36,7 +36,9 @@ TEST_F(LayerNormBasicTest, ShapeInference3D) {
     ASSERT_TRUE(shapes.has_value());
     auto vals = (*shapes)[0]->getConstantValue();
     ASSERT_EQ(vals.size(), 3u);
-    EXPECT_EQ(vals[0], 2); EXPECT_EQ(vals[1], 4); EXPECT_EQ(vals[2], 8);
+    EXPECT_EQ(vals[0], 2);
+    EXPECT_EQ(vals[1], 4);
+    EXPECT_EQ(vals[2], 8);
 }
 
 TEST_F(LayerNormBasicTest, DataTypeInference) {
@@ -67,8 +69,9 @@ TEST_F(LayerNormBasicTest, ShapeInference3D_LastDim) {
 // Symbolic shape inference: batch and sequence dims can be symbolic
 TEST_F(LayerNormBasicTest, SymbolicShapeInference) {
     auto batch = ExprObj::variable("batch");
-    auto seq   = ExprObj::variable("seq");
-    auto shapeX = ShapeExpr(new ShapeExprObj({batch, seq, ExprObj::constant(64)}));
+    auto seq = ExprObj::variable("seq");
+    auto shapeX =
+        ShapeExpr(new ShapeExprObj({batch, seq, ExprObj::constant(64)}));
     auto x = graph->addTensor(shapeX, DataType(INFINI_DTYPE_F32));
     auto w = graph->addTensor({64}, DataType(INFINI_DTYPE_F32));
     auto b = graph->addTensor({64}, DataType(INFINI_DTYPE_F32));

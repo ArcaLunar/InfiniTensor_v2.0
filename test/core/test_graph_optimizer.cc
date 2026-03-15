@@ -123,7 +123,8 @@ TEST_F(GraphOptimizerTest, IdentityEliminationDivByOnePreservesOutput) {
     EXPECT_TRUE(graph->checkValid());
 }
 
-TEST_F(GraphOptimizerTest, IdentityEliminationClipInfiniteBoundsPreservesOutput) {
+TEST_F(GraphOptimizerTest,
+       IdentityEliminationClipInfiniteBoundsPreservesOutput) {
     auto graph = make_ref<GraphObj>(runtime);
     auto input = graph->addTensor({2, 2}, DataType(INFINI_DTYPE_F32));
     auto negInf = makeScalar(graph, -std::numeric_limits<float>::infinity());
@@ -161,8 +162,8 @@ TEST_F(GraphOptimizerTest, IdempotenceEliminationClipClipSameBounds) {
     auto minVal = makeScalar(graph, -1.0f);
     auto maxVal = makeScalar(graph, 1.0f);
     auto clip1 = graph->addOp<ClipObj>(input, minVal, maxVal, nullptr);
-    auto clip2 = graph->addOp<ClipObj>(clip1->getOutput(0), minVal, maxVal,
-                                       nullptr);
+    auto clip2 =
+        graph->addOp<ClipObj>(clip1->getOutput(0), minVal, maxVal, nullptr);
     graph->setOutputs({clip2->getOutput(0)});
 
     graph->optimize();

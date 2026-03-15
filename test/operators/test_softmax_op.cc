@@ -30,7 +30,8 @@ TEST_F(SoftmaxBasicTest, ShapeInference) {
     ASSERT_TRUE(shapes.has_value());
     auto vals = (*shapes)[0]->getConstantValue();
     ASSERT_EQ(vals.size(), 2u);
-    EXPECT_EQ(vals[0], 4); EXPECT_EQ(vals[1], 8);
+    EXPECT_EQ(vals[0], 4);
+    EXPECT_EQ(vals[1], 8);
 }
 
 TEST_F(SoftmaxBasicTest, DataTypeInference) {
@@ -44,8 +45,9 @@ TEST_F(SoftmaxBasicTest, DataTypeInference) {
 // Symbolic shape inference: output carries symbolic dimensions unchanged
 TEST_F(SoftmaxBasicTest, SymbolicShapeInference) {
     auto batch = ExprObj::variable("batch");
-    auto seq   = ExprObj::variable("seq");
-    auto shapeX = ShapeExpr(new ShapeExprObj({batch, seq, ExprObj::constant(64)}));
+    auto seq = ExprObj::variable("seq");
+    auto shapeX =
+        ShapeExpr(new ShapeExprObj({batch, seq, ExprObj::constant(64)}));
     auto x = graph->addTensor(shapeX, DataType(INFINI_DTYPE_F32));
     auto op = graph->addOp<SoftmaxObj>(x, nullptr, -1);
     auto shapes = op->inferShape();

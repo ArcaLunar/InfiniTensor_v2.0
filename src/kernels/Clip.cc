@@ -1,5 +1,5 @@
-#include "core/runtime.h"
 #include "operators/Clip.h"
+#include "core/runtime.h"
 
 namespace infini {
 
@@ -7,7 +7,9 @@ class ClipOp : public Kernel {
     void compute(const Operator &_op,
                  const RuntimeObj *runtime) const override {
         auto op = as<ClipObj>(_op);
-        op->createOpDesc();
+        if (op->getInfiniOpDesc() == nullptr) {
+            op->createOpDesc();
+        }
         // inputs[0]=x, inputs[1]=min_val, inputs[2]=max_val, outputs[0]=y
         void *yData = op->getOutput(0)->getRawDataPtr<void *>();
         void *const xData = op->getInput(0)->getRawDataPtr<void *>();

@@ -8,9 +8,9 @@
 #include "operators/Conv.h"
 #include "operators/ElementWise.h"
 #include "operators/Gemm.h"
+#include "operators/LPNorm.h"
 #include "operators/LayerNorm.h"
 #include "operators/LogSoftmax.h"
-#include "operators/LPNorm.h"
 #include "operators/RMSNorm.h"
 #include "operators/Softmax.h"
 #include "operators/Unary.h"
@@ -53,8 +53,8 @@ class GraphBuilderObj {
 
     // Normalization
     Tensor layer_norm(Tensor input, Tensor weight, Tensor bias,
-                      std::optional<Tensor> output = std::nullopt,
-                      int axis = 1, float eps = 1e-5f);
+                      std::optional<Tensor> output = std::nullopt, int axis = 1,
+                      float eps = 1e-5f);
     Tensor rms_norm(Tensor input, Tensor weight,
                     std::optional<Tensor> output = std::nullopt,
                     float epsilon = 1e-6f);

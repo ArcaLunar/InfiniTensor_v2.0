@@ -113,12 +113,7 @@ void RuntimeObj::getAllDeviceCount(int *count_array) {
     CHECK_INFINI_ERROR(infinirtGetAllDeviceCount(count_array));
 }
 
-void RuntimeObj::run(const Graph &graph) const {
-    auto ctx = getCurrentThreadContext();
-
-    IT_ASSERT(graph->checkBeforRun());
-    // TODO: Currently only supports single device, multi-device support coming
-    // later
+void RuntimeObj::runOperators(const Graph &graph, const Context &ctx) const {
     const auto &kernelRegistry = KernelRegistry::getInstance();
     for (auto &op : graph->getOperators()) {
         auto kernelAttrs =
@@ -126,6 +121,68 @@ void RuntimeObj::run(const Graph &graph) const {
         Kernel *kernel = kernelRegistry.getKernel(kernelAttrs);
         kernel->compute(op, this);
     }
+}
+
+bool RuntimeObj::isCudaGraphSupported(const Context &ctx) const {
+    return ctx->device == infiniDevice_t::INFINI_DEVICE_NVIDIA;
+}
+
+void RuntimeObj::compileCudaGraph(const Graph &graph,
+                                  const Context &ctx) const {
+    // Warmup once to materialize op descriptors/workspace before capture.
+    runOperators(graph, ctx);
+
+    CHECK_INFINI_ERROR(infinirtStreamBeginCapture(
+        ctx->stream, INFINIRT_STREAM_CAPTURE_MODE_GLOBAL));
+
+    infinirtGraph_t graphHandle = nullptr;
+    try {
+        runOperators(graph, ctx);
+        CHECK_INFINI_ERROR(infinirtStreamEndCapture(ctx->stream, &graphHandle));
+    } catch (...) {
+        infinirtGraph_t abandoned = nullptr;
+        if (infinirtStreamEndCapture(ctx->stream, &abandoned) ==
+                INFINI_STATUS_SUCCESS &&
+            abandoned != nullptr) {
+            infinirtGraphDestroy(abandoned);
+        }
+        throw;
+    }
+
+    infinirtGraphExec_t graphExec = nullptr;
+    CHECK_INFINI_ERROR(
+        infinirtGraphInstantiate(&graphExec, graphHandle, nullptr, nullptr, 0));
+    CHECK_INFINI_ERROR(infinirtGraphDestroy(graphHandle));
+
+    graph->setCudaGraphExecForCurrentThread(graphExec);
+    graph->markCudaGraphCompiledForCurrentThread();
+}
+
+void RuntimeObj::launchCudaGraph(const Graph &graph, const Context &ctx) const {
+    auto graphExec = graph->getCudaGraphExecForCurrentThread();
+    IT_ASSERT(graphExec != nullptr,
+              "Compiled CUDA graph exec is missing for current thread");
+    CHECK_INFINI_ERROR(infinirtGraphLuanch(graphExec, ctx->stream));
+    graph->markCudaGraphLaunched();
+}
+
+void RuntimeObj::run(const Graph &graph) const {
+    auto ctx = getCurrentThreadContext();
+
+    IT_ASSERT(graph->checkBeforRun());
+    if (!graph->isCudaGraphEnabled() || !isCudaGraphSupported(ctx)) {
+        // TODO: Currently only supports single device, multi-device support
+        // coming later.
+        runOperators(graph, ctx);
+        return;
+    }
+
+    if (!graph->hasCompiledCudaGraphForCurrentThread()) {
+        compileCudaGraph(graph, ctx);
+        return;
+    }
+
+    launchCudaGraph(graph, ctx);
 }
 
 void RuntimeObj::dataMalloc(const Graph &graph) {

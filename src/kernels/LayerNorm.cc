@@ -1,5 +1,5 @@
-#include "core/runtime.h"
 #include "operators/LayerNorm.h"
+#include "core/runtime.h"
 
 namespace infini {
 
@@ -16,7 +16,9 @@ class LayerNormOp : public Kernel {
     void compute(const Operator &_op,
                  const RuntimeObj *runtime) const override {
         auto op = as<LayerNormObj>(_op);
-        op->createOpDesc();
+        if (op->getInfiniOpDesc() == nullptr) {
+            op->createOpDesc();
+        }
 
         void *yData = op->getOutput(0)->getRawDataPtr<void *>();
         void *const xData = op->getInput(0)->getRawDataPtr<void *>();
@@ -28,7 +30,7 @@ class LayerNormOp : public Kernel {
         auto xShape = op->getInput(0)->getShape()->getConstantValue();
         int axis = normalizeAxis(op->getAxis(), xShape.size());
         IT_ASSERT(xShape.size() == 3,
-              "LayerNorm kernel only supports 3D input");
+                  "LayerNorm kernel only supports 3D input");
         IT_ASSERT(axis == 2, "LayerNorm kernel only supports axis=2");
         size_t prefixElems = 1;
         for (int i = 0; i < axis; ++i)

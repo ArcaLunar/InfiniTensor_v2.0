@@ -4,7 +4,10 @@
 
 #include "core/operator.h"
 #include <algorithm>
+#include <infinirt.h>
 #include <numeric>
+#include <thread>
+#include <unordered_map>
 
 namespace infini {
 class GraphObj : public Object {
@@ -13,9 +16,17 @@ class GraphObj : public Object {
     TensorVec tensors;
     TensorVec outputs;
     OpVec ops;
+    bool cudaGraphEnabled = false;
+    uint64_t mutationVersion = 0;
+    uint64_t cudaGraphInvalidateCount = 0;
+    uint64_t cudaGraphCompileCount = 0;
+    uint64_t cudaGraphLaunchCount = 0;
+    std::unordered_map<std::thread::id, uint64_t> compiledGraphVersions;
+    std::unordered_map<std::thread::id, infinirtGraphExec_t> compiledGraphExecs;
 
   public:
     explicit GraphObj(Runtime runtime);
+    ~GraphObj() override;
     string toString() const override;
 
     Tensor addTensor(Shape dim, DataType dtype);
@@ -60,6 +71,19 @@ class GraphObj : public Object {
 
     bool checkValid() const;
     bool checkBeforRun() const;
+
+    bool isCudaGraphEnabled() const;
+    void setCudaGraphEnabled(bool enabled);
+    uint64_t getMutationVersion() const;
+    bool hasCompiledCudaGraphForCurrentThread() const;
+    void markCudaGraphCompiledForCurrentThread();
+    void markCudaGraphLaunched();
+    infinirtGraphExec_t getCudaGraphExecForCurrentThread() const;
+    void setCudaGraphExecForCurrentThread(infinirtGraphExec_t graphExec);
+    void invalidateCudaGraph();
+    uint64_t getCudaGraphInvalidateCount() const;
+    uint64_t getCudaGraphCompileCount() const;
+    uint64_t getCudaGraphLaunchCount() const;
 
   private:
     void addOperatorAndConnect(const Operator &op);
