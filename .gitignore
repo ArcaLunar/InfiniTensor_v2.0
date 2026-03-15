@@ -49,3 +49,6 @@ InfiniCore/
 # compile_commands
 compile_commands.json
 .cache/
+InfiniCore
+resume
+tests.py
