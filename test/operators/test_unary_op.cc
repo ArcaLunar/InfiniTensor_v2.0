@@ -27,24 +27,29 @@ static void testUnaryInference(Graph g, OpType opType) {
     ASSERT_TRUE(shapes.has_value());
     auto vals = (*shapes)[0]->getConstantValue();
     ASSERT_EQ(vals.size(), 3u);
-    EXPECT_EQ(vals[0], 2); EXPECT_EQ(vals[1], 3); EXPECT_EQ(vals[2], 4);
+    EXPECT_EQ(vals[0], 2);
+    EXPECT_EQ(vals[1], 3);
+    EXPECT_EQ(vals[2], 4);
 
     auto dtypes = op->inferDataType();
     ASSERT_EQ(dtypes.size(), 1u);
     EXPECT_EQ(dtypes[0], DataType(INFINI_DTYPE_F32));
 }
 
-TEST_F(UnaryBasicTest, Relu)     { testUnaryInference(graph, OpType::Relu); }
-TEST_F(UnaryBasicTest, Sigmoid)  { testUnaryInference(graph, OpType::Sigmoid); }
-TEST_F(UnaryBasicTest, Silu)     { testUnaryInference(graph, OpType::Silu); }
-TEST_F(UnaryBasicTest, Gelu)     { testUnaryInference(graph, OpType::Gelu); }
-TEST_F(UnaryBasicTest, Softplus) { testUnaryInference(graph, OpType::Softplus); }
-TEST_F(UnaryBasicTest, Tanh)     { testUnaryInference(graph, OpType::Tanh); }
+TEST_F(UnaryBasicTest, Relu) { testUnaryInference(graph, OpType::Relu); }
+TEST_F(UnaryBasicTest, Sigmoid) { testUnaryInference(graph, OpType::Sigmoid); }
+TEST_F(UnaryBasicTest, Silu) { testUnaryInference(graph, OpType::Silu); }
+TEST_F(UnaryBasicTest, Gelu) { testUnaryInference(graph, OpType::Gelu); }
+TEST_F(UnaryBasicTest, Softplus) {
+    testUnaryInference(graph, OpType::Softplus);
+}
+TEST_F(UnaryBasicTest, Tanh) { testUnaryInference(graph, OpType::Tanh); }
 
 TEST_F(UnaryBasicTest, SymbolicShape) {
     auto batch = ExprObj::variable("batch");
     auto h = ExprObj::variable("h");
-    auto shapeX = ShapeExpr(new ShapeExprObj({batch, h, ExprObj::constant(64)}));
+    auto shapeX =
+        ShapeExpr(new ShapeExprObj({batch, h, ExprObj::constant(64)}));
     auto x = graph->addTensor(shapeX, DataType(INFINI_DTYPE_F32));
     auto op = graph->addOp<UnaryObj>(OpType::Relu, x, nullptr);
     auto shapes = op->inferShape();

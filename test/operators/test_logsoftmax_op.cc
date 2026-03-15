@@ -29,7 +29,9 @@ TEST_F(LogSoftmaxBasicTest, ShapeInference) {
     ASSERT_TRUE(shapes.has_value());
     auto vals = (*shapes)[0]->getConstantValue();
     ASSERT_EQ(vals.size(), 3u);
-    EXPECT_EQ(vals[0], 3); EXPECT_EQ(vals[1], 5); EXPECT_EQ(vals[2], 7);
+    EXPECT_EQ(vals[0], 3);
+    EXPECT_EQ(vals[1], 5);
+    EXPECT_EQ(vals[2], 7);
 }
 
 TEST_F(LogSoftmaxBasicTest, DataTypeInference) {

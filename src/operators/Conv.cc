@@ -25,7 +25,8 @@ string ConvObj::toString() const {
 }
 
 // output shape: [N, K, out_0, out_1, ...]
-// out_i = floor((in_i + 2*pads[i] - dilations[i]*(kernel_i-1) - 1) / strides[i]) + 1
+// out_i = floor((in_i + 2*pads[i] - dilations[i]*(kernel_i-1) - 1) /
+// strides[i]) + 1
 optional<vector<ShapeExpr>> ConvObj::inferShape() {
     auto xShape = inputs[0]->getShape();
     auto wShape = inputs[1]->getShape();
@@ -41,8 +42,8 @@ optional<vector<ShapeExpr>> ConvObj::inferShape() {
 
     // output: [N, K, ...]
     vector<Expr> outDims;
-    outDims.push_back((*xShape)[0]);    // N
-    outDims.push_back((*wShape)[0]);    // K (number of filters)
+    outDims.push_back((*xShape)[0]); // N
+    outDims.push_back((*wShape)[0]); // K (number of filters)
     for (size_t i = 0; i < nDims; ++i) {
         int64_t in_i = xVals[i + 2];
         int64_t k_i = wVals[i + 2];

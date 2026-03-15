@@ -129,7 +129,9 @@ OpVec TensorObj::getTargets() const { return wrefs_to_refs(targets); }
 
 Operator TensorObj::getSource() const { return source.lock(); }
 
-bool TensorObj::isConstant() const { return hasData() && getSource() == nullptr; }
+bool TensorObj::isConstant() const {
+    return hasData() && getSource() == nullptr;
+}
 
 bool TensorObj::isGraphInput() const {
     return !hasData() && getSource() == nullptr;

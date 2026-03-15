@@ -12,10 +12,12 @@ namespace infini {
 namespace {
 
 bool tensorHasConcreteF32Data(const Tensor &tensor) {
-    return tensor != nullptr && tensor->hasData() && tensor->getSource() == nullptr &&
+    return tensor != nullptr && tensor->hasData() &&
+           tensor->getSource() == nullptr &&
            tensor->getDevice() == INFINI_DEVICE_CPU &&
            tensor->getDataType() == DataType(INFINI_DTYPE_F32) &&
-           tensor->getShape()->isConcrete() && tensor->getStride()->isConcrete();
+           tensor->getShape()->isConcrete() &&
+           tensor->getStride()->isConcrete();
 }
 
 bool isScalarConstantValue(const Tensor &tensor, float expected) {
@@ -32,9 +34,7 @@ optional<float> getScalarConstantValue(const Tensor &tensor) {
     return tensor->getRawDataPtr<float *>()[0];
 }
 
-bool isIdentityUnaryOp(OpType opType) {
-    return opType == OpType::Relu;
-}
+bool isIdentityUnaryOp(OpType opType) { return opType == OpType::Relu; }
 
 class TopologicalSortPass final : public GraphPass {
   public:
@@ -84,22 +84,28 @@ class ConstantFoldPass final : public GraphPass {
             const auto numel = output->getElement();
             auto *buffer = new float[numel];
 
-            if (op->getOpType() == OpType::Add || op->getOpType() == OpType::Sub ||
-                op->getOpType() == OpType::Mul || op->getOpType() == OpType::Div) {
+            if (op->getOpType() == OpType::Add ||
+                op->getOpType() == OpType::Sub ||
+                op->getOpType() == OpType::Mul ||
+                op->getOpType() == OpType::Div) {
                 auto lhs = op->getInput(0);
                 auto rhs = op->getInput(1);
                 const auto lhsStride =
-                    broadcastStride(lhs->getShape(), lhs->getStride(), output->getShape())
+                    broadcastStride(lhs->getShape(), lhs->getStride(),
+                                    output->getShape())
                         ->getConstantValue();
                 const auto rhsStride =
-                    broadcastStride(rhs->getShape(), rhs->getStride(), output->getShape())
+                    broadcastStride(rhs->getShape(), rhs->getStride(),
+                                    output->getShape())
                         ->getConstantValue();
                 const auto *lhsPtr = lhs->getRawDataPtr<float *>();
                 const auto *rhsPtr = rhs->getRawDataPtr<float *>();
 
                 for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
-                    auto lhsOffset = calculateLinearOffset(i, outShape, lhsStride);
-                    auto rhsOffset = calculateLinearOffset(i, outShape, rhsStride);
+                    auto lhsOffset =
+                        calculateLinearOffset(i, outShape, lhsStride);
+                    auto rhsOffset =
+                        calculateLinearOffset(i, outShape, rhsStride);
                     switch (op->getOpType().underlying()) {
                     case OpType::Add:
                         buffer[i] = lhsPtr[lhsOffset] + rhsPtr[rhsOffset];
@@ -123,34 +129,42 @@ class ConstantFoldPass final : public GraphPass {
                 auto maxVal = op->getInput(2);
 
                 const auto inStride =
-                    broadcastStride(input->getShape(), input->getStride(), output->getShape())
+                    broadcastStride(input->getShape(), input->getStride(),
+                                    output->getShape())
                         ->getConstantValue();
                 const auto minStride =
-                    broadcastStride(minVal->getShape(), minVal->getStride(), output->getShape())
+                    broadcastStride(minVal->getShape(), minVal->getStride(),
+                                    output->getShape())
                         ->getConstantValue();
                 const auto maxStride =
-                    broadcastStride(maxVal->getShape(), maxVal->getStride(), output->getShape())
+                    broadcastStride(maxVal->getShape(), maxVal->getStride(),
+                                    output->getShape())
                         ->getConstantValue();
                 const auto *inPtr = input->getRawDataPtr<float *>();
                 const auto *minPtr = minVal->getRawDataPtr<float *>();
                 const auto *maxPtr = maxVal->getRawDataPtr<float *>();
 
                 for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
-                    auto inOffset = calculateLinearOffset(i, outShape, inStride);
-                    auto minOffset = calculateLinearOffset(i, outShape, minStride);
-                    auto maxOffset = calculateLinearOffset(i, outShape, maxStride);
+                    auto inOffset =
+                        calculateLinearOffset(i, outShape, inStride);
+                    auto minOffset =
+                        calculateLinearOffset(i, outShape, minStride);
+                    auto maxOffset =
+                        calculateLinearOffset(i, outShape, maxStride);
                     auto clipped = std::max(inPtr[inOffset], minPtr[minOffset]);
                     buffer[i] = std::min(clipped, maxPtr[maxOffset]);
                 }
             } else if (isIdentityUnaryOp(op->getOpType())) {
                 auto input = op->getInput(0);
                 const auto inStride =
-                    broadcastStride(input->getShape(), input->getStride(), output->getShape())
+                    broadcastStride(input->getShape(), input->getStride(),
+                                    output->getShape())
                         ->getConstantValue();
                 const auto *inPtr = input->getRawDataPtr<float *>();
 
                 for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
-                    auto inOffset = calculateLinearOffset(i, outShape, inStride);
+                    auto inOffset =
+                        calculateLinearOffset(i, outShape, inStride);
                     buffer[i] = std::max(inPtr[inOffset], 0.0f);
                 }
             } else if (op->getOpType() == OpType::Sigmoid ||
@@ -160,12 +174,14 @@ class ConstantFoldPass final : public GraphPass {
                        op->getOpType() == OpType::Tanh) {
                 auto input = op->getInput(0);
                 const auto inStride =
-                    broadcastStride(input->getShape(), input->getStride(), output->getShape())
+                    broadcastStride(input->getShape(), input->getStride(),
+                                    output->getShape())
                         ->getConstantValue();
                 const auto *inPtr = input->getRawDataPtr<float *>();
 
                 for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
-                    auto inOffset = calculateLinearOffset(i, outShape, inStride);
+                    auto inOffset =
+                        calculateLinearOffset(i, outShape, inStride);
                     const float x = inPtr[inOffset];
                     switch (op->getOpType().underlying()) {
                     case OpType::Sigmoid:
@@ -175,7 +191,8 @@ class ConstantFoldPass final : public GraphPass {
                         buffer[i] = x / (1.0f + std::exp(-x));
                         break;
                     case OpType::Gelu:
-                        buffer[i] = 0.5f * x * (1.0f + std::erf(x / std::sqrt(2.0f)));
+                        buffer[i] =
+                            0.5f * x * (1.0f + std::erf(x / std::sqrt(2.0f)));
                         break;
                     case OpType::Softplus:
                         buffer[i] = std::log1p(std::exp(x));
@@ -233,8 +250,8 @@ class IdentityEliminationPass final : public GraphPass {
                 auto minVal = getScalarConstantValue(op->getInput(1));
                 auto maxVal = getScalarConstantValue(op->getInput(2));
                 if (minVal.has_value() && maxVal.has_value() &&
-                    std::isinf(*minVal) && *minVal < 0.0f && std::isinf(*maxVal) &&
-                    *maxVal > 0.0f) {
+                    std::isinf(*minVal) && *minVal < 0.0f &&
+                    std::isinf(*maxVal) && *maxVal > 0.0f) {
                     replacement = op->getInput(0);
                 }
             }
@@ -346,7 +363,8 @@ class DeadCodeEliminationPass final : public GraphPass {
 
         auto tensors = graph.getTensors();
         for (const auto &tensor : tensors) {
-            if (!liveTensors.count(tensor) && graph.eraseTensorIfUnused(tensor)) {
+            if (!liveTensors.count(tensor) &&
+                graph.eraseTensorIfUnused(tensor)) {
                 changed = true;
             }
         }

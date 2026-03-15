@@ -311,8 +311,8 @@ TEST(Gemm, SameThread_CPUThenNVIDIAWorkspaceReinit) {
         Graph g = make_ref<GraphObj>(runtime);
         auto A = g->addTensor(shapeA, DataType(INFINI_DTYPE_F32));
         auto B = g->addTensor(shapeB, DataType(INFINI_DTYPE_F32));
-        auto op = g->addOp<GemmObj>(A, B, nullptr, nullptr, 1.0f, 0.0f,
-                                    false, false);
+        auto op =
+            g->addOp<GemmObj>(A, B, nullptr, nullptr, 1.0f, 0.0f, false, false);
 
         std::vector<float> inputAData(A->getElement());
         std::vector<float> inputBData(B->getElement());

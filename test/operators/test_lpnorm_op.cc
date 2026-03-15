@@ -30,7 +30,9 @@ TEST_F(LPNormBasicTest, ShapeInference) {
     ASSERT_TRUE(shapes.has_value());
     auto vals = (*shapes)[0]->getConstantValue();
     ASSERT_EQ(vals.size(), 3u);
-    EXPECT_EQ(vals[0], 2); EXPECT_EQ(vals[1], 3); EXPECT_EQ(vals[2], 4);
+    EXPECT_EQ(vals[0], 2);
+    EXPECT_EQ(vals[1], 3);
+    EXPECT_EQ(vals[2], 4);
 }
 
 TEST_F(LPNormBasicTest, DataTypeInference) {
@@ -50,7 +52,8 @@ TEST_F(LPNormBasicTest, L1Norm) {
     auto shapes = op->inferShape();
     ASSERT_TRUE(shapes.has_value());
     auto vals = (*shapes)[0]->getConstantValue();
-    EXPECT_EQ(vals[0], 4); EXPECT_EQ(vals[1], 8);
+    EXPECT_EQ(vals[0], 4);
+    EXPECT_EQ(vals[1], 8);
 }
 
 // Symbolic shape inference: output carries symbolic dimensions

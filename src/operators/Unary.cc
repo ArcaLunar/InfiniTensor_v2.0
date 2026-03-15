@@ -75,7 +75,8 @@ void UnaryObj::createOpDesc() {
             handle, (infiniopReluDescriptor_t *)&infiniOpDesc, yDesc, xDesc));
     } else if (type == OpType::Sigmoid) {
         CHECK_INFINI_ERROR(infiniopCreateSigmoidDescriptor(
-            handle, (infiniopSigmoidDescriptor_t *)&infiniOpDesc, yDesc, xDesc));
+            handle, (infiniopSigmoidDescriptor_t *)&infiniOpDesc, yDesc,
+            xDesc));
     } else if (type == OpType::Silu) {
         CHECK_INFINI_ERROR(infiniopCreateSiluDescriptor(
             handle, (infiniopSiluDescriptor_t *)&infiniOpDesc, yDesc, xDesc));
@@ -84,7 +85,8 @@ void UnaryObj::createOpDesc() {
             handle, (infiniopGeluDescriptor_t *)&infiniOpDesc, yDesc, xDesc));
     } else if (type == OpType::Softplus) {
         CHECK_INFINI_ERROR(infiniopCreateSoftplusDescriptor(
-            handle, (infiniopSoftplusDescriptor_t *)&infiniOpDesc, yDesc, xDesc));
+            handle, (infiniopSoftplusDescriptor_t *)&infiniOpDesc, yDesc,
+            xDesc));
     } else if (type == OpType::Tanh) {
         CHECK_INFINI_ERROR(infiniopCreateTanhDescriptor(
             handle, (infiniopTanhDescriptor_t *)&infiniOpDesc, yDesc, xDesc));

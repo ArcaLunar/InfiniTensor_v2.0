@@ -1,5 +1,5 @@
-#include "core/runtime.h"
 #include "operators/LogSoftmax.h"
+#include "core/runtime.h"
 
 namespace infini {
 
@@ -7,7 +7,9 @@ class LogSoftmaxOp : public Kernel {
     void compute(const Operator &_op,
                  const RuntimeObj *runtime) const override {
         auto op = as<LogSoftmaxObj>(_op);
-        op->createOpDesc();
+        if (op->getInfiniOpDesc() == nullptr) {
+            op->createOpDesc();
+        }
         void *yData = op->getOutput(0)->getRawDataPtr<void *>();
         void *const xData = op->getInput(0)->getRawDataPtr<void *>();
         size_t ws_size = 0;
