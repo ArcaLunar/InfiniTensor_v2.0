@@ -7,7 +7,7 @@
 namespace infini {
 
 template <typename T> struct SoftmaxThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     Shape shapeIn;
     int axis = -1;
@@ -73,7 +73,7 @@ void runSoftmaxMultiThreadTest(const Shape &shapeIn, int axis,
         p.inputData = inputData;
         p.deviceName = name;
     };
-    fill(cpuParams, INFINI_DEVICE_CPU, "CPU");
+    fill(cpuParams, INFINI_DEVICE_NVIDIA, "CPU");
     fill(gpuParams, INFINI_DEVICE_NVIDIA, "NVIDIA");
 
     std::thread cpuThread(softmaxDeviceThreadFunc<T>, std::ref(cpuParams));
@@ -114,7 +114,7 @@ void runSoftmaxMultiThreadTest(const Shape &shapeIn, int axis,
 TEST(Softmax, SingleDevice_CPU) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     try {
         Graph g = make_ref<GraphObj>(runtime);

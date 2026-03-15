@@ -7,7 +7,7 @@
 namespace infini {
 
 template <typename T> struct LPNormThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     Shape shapeIn;
     int axis = 1;
@@ -73,7 +73,7 @@ void runLPNormMultiThreadTest(const Shape &shapeIn, int axis, int p,
         param->dataType = dataType;
         param->inputData = inputData;
     }
-    cpuParams.device = INFINI_DEVICE_CPU;
+    cpuParams.device = INFINI_DEVICE_NVIDIA;
     cpuParams.deviceName = "CPU";
     gpuParams.device = INFINI_DEVICE_NVIDIA;
     gpuParams.deviceName = "NVIDIA";
@@ -113,7 +113,7 @@ void runLPNormMultiThreadTest(const Shape &shapeIn, int axis, int p,
 TEST(LPNorm, SingleDevice_CPU_L2) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     try {
         Graph g = make_ref<GraphObj>(runtime);
@@ -136,7 +136,7 @@ TEST(LPNorm, SingleDevice_CPU_L2) {
 TEST(LPNorm, SingleDevice_CPU_L1) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     try {
         Graph g = make_ref<GraphObj>(runtime);

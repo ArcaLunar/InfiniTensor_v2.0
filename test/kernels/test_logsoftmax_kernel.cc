@@ -7,7 +7,7 @@
 namespace infini {
 
 template <typename T> struct LogSoftmaxThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     Shape shapeIn;
     DataType dataType = DataType(INFINI_DTYPE_F32);
@@ -65,7 +65,7 @@ void runLogSoftmaxMultiThreadTest(const Shape &shapeIn,
         p->dataType = dataType;
         p->inputData = inputData;
     }
-    cpuParams.device = INFINI_DEVICE_CPU;
+    cpuParams.device = INFINI_DEVICE_NVIDIA;
     cpuParams.deviceName = "CPU";
     gpuParams.device = INFINI_DEVICE_NVIDIA;
     gpuParams.deviceName = "NVIDIA";
@@ -105,7 +105,7 @@ void runLogSoftmaxMultiThreadTest(const Shape &shapeIn,
 TEST(LogSoftmax, SingleDevice_CPU) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     Graph g = make_ref<GraphObj>(runtime);
     auto x = g->addTensor({2, 10}, DataType(INFINI_DTYPE_F32));

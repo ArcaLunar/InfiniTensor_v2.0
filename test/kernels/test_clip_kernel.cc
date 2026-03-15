@@ -7,7 +7,7 @@
 namespace infini {
 
 template <typename T> struct ClipThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     Shape shapeIn;
     DataType dataType = DataType(INFINI_DTYPE_F32);
@@ -74,7 +74,7 @@ void runClipMultiThreadTest(const Shape &shapeIn, T minVal, T maxVal,
         p->minVal = minVal;
         p->maxVal = maxVal;
     }
-    cpuParams.device = INFINI_DEVICE_CPU;
+    cpuParams.device = INFINI_DEVICE_NVIDIA;
     cpuParams.deviceName = "CPU";
     gpuParams.device = INFINI_DEVICE_NVIDIA;
     gpuParams.deviceName = "NVIDIA";
@@ -113,7 +113,7 @@ void runClipMultiThreadTest(const Shape &shapeIn, T minVal, T maxVal,
 TEST(Clip, SingleDevice_CPU) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     try {
         Shape shape = {4, 8};

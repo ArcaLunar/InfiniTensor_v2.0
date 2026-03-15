@@ -7,7 +7,7 @@
 namespace infini {
 
 template <typename T> struct LayerNormThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     Shape shapeIn;     // e.g. {batch, seq, hidden}
     Shape shapeWeight; // e.g. {seq, hidden} (dims from axis onward)
@@ -89,7 +89,7 @@ void runLayerNormMultiThreadTest(const Shape &shapeIn, const Shape &shapeWeight,
         p->weightData = weightData;
         p->biasData = biasData;
     }
-    cpuParams.device = INFINI_DEVICE_CPU;
+    cpuParams.device = INFINI_DEVICE_NVIDIA;
     cpuParams.deviceName = "CPU";
     gpuParams.device = INFINI_DEVICE_NVIDIA;
     gpuParams.deviceName = "NVIDIA";
@@ -129,7 +129,7 @@ void runLayerNormMultiThreadTest(const Shape &shapeIn, const Shape &shapeWeight,
 TEST(LayerNorm, SingleDevice_CPU) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     try {
         Graph g = make_ref<GraphObj>(runtime);

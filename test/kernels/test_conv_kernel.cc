@@ -7,7 +7,7 @@
 namespace infini {
 
 template <typename T> struct ConvThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     Shape shapeX;
     Shape shapeW;
@@ -85,7 +85,7 @@ void runConvMultiThreadTest(const Shape &shapeX, const Shape &shapeW,
         p->inputData = inputData;
         p->weightData = weightData;
     }
-    cpuParams.device = INFINI_DEVICE_CPU;
+    cpuParams.device = INFINI_DEVICE_NVIDIA;
     cpuParams.deviceName = "CPU";
     gpuParams.device = INFINI_DEVICE_NVIDIA;
     gpuParams.deviceName = "NVIDIA";
@@ -124,7 +124,7 @@ void runConvMultiThreadTest(const Shape &shapeX, const Shape &shapeW,
 TEST(Conv, SingleDevice_CPU) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     // [N, C_in, H, W]  x  [C_out, C_in, kH, kW]
     Shape shapeX = {1, 1, 5, 5};

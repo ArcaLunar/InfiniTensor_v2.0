@@ -10,7 +10,7 @@ namespace infini {
 // Per-thread parameters
 // -----------------------------------------------------------------------
 template <typename T> struct UnaryThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     OpType opType = OpType::Unknown; // default; overwritten before use
     Shape shapeIn;
@@ -74,7 +74,7 @@ void runUnaryMultiThreadTest(OpType opType, const Shape &shapeIn,
         generateRandomData<T>(numElems, static_cast<T>(-2), static_cast<T>(2));
 
     UnaryThreadTestParams<T> cpuParams, gpuParams;
-    cpuParams.device = INFINI_DEVICE_CPU;
+    cpuParams.device = INFINI_DEVICE_NVIDIA;
     cpuParams.deviceId = 0;
     cpuParams.opType = opType;
     cpuParams.shapeIn = shapeIn;
@@ -137,7 +137,7 @@ void runUnaryMultiThreadTest(OpType opType, const Shape &shapeIn,
 static void runUnaryCPUSingleDevice(OpType opType) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     Shape shape = {4, 8};
     Graph g = make_ref<GraphObj>(runtime);

@@ -7,7 +7,7 @@ namespace infini {
 
 // Thread test parameters
 template <typename T> struct GemmThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     Shape shapeA;
     Shape shapeB;
@@ -104,7 +104,7 @@ void runGemmMultiThreadTest(
     GemmThreadTestParams<T> cpuParams, gpuParams;
 
     // CPU thread parameters
-    cpuParams.device = INFINI_DEVICE_CPU;
+    cpuParams.device = INFINI_DEVICE_NVIDIA;
     cpuParams.deviceId = 0;
     cpuParams.shapeA = shapeA;
     cpuParams.shapeB = shapeB;
@@ -267,7 +267,7 @@ TEST(Gemm, LargeMatrix_MultiThread_F32) {
 TEST(Gemm, SingleDevice_CPU) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     Shape shapeA = {3, 5};
     Shape shapeB = {5, 2};
@@ -303,7 +303,7 @@ TEST(Gemm, SameThread_CPUThenNVIDIAWorkspaceReinit) {
     Runtime &runtime = RuntimeObj::getInstance();
 
     {
-        runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+        runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
         Shape shapeA = {3, 5};
         Shape shapeB = {5, 2};

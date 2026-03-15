@@ -7,7 +7,7 @@
 namespace infini {
 
 template <typename T> struct RMSNormThreadTestParams {
-    infiniDevice_t device = INFINI_DEVICE_CPU;
+    infiniDevice_t device = INFINI_DEVICE_NVIDIA;
     int deviceId = 0;
     Shape shapeIn; // e.g. {batch, hidden}
     Shape shapeW;  // e.g. {hidden}
@@ -78,7 +78,7 @@ void runRMSNormMultiThreadTest(const Shape &shapeIn, const Shape &shapeW,
         p->inputData = inputData;
         p->weightData = weightData;
     }
-    cpuParams.device = INFINI_DEVICE_CPU;
+    cpuParams.device = INFINI_DEVICE_NVIDIA;
     cpuParams.deviceName = "CPU";
     gpuParams.device = INFINI_DEVICE_NVIDIA;
     gpuParams.deviceName = "NVIDIA";
@@ -117,7 +117,7 @@ void runRMSNormMultiThreadTest(const Shape &shapeIn, const Shape &shapeW,
 TEST(RMSNorm, SingleDevice_CPU) {
     RuntimeObj::init();
     Runtime &runtime = RuntimeObj::getInstance();
-    runtime->initThreadContext(INFINI_DEVICE_CPU, 0);
+    runtime->initThreadContext(INFINI_DEVICE_NVIDIA, 0);
 
     Graph g = make_ref<GraphObj>(runtime);
     auto x = g->addTensor({4, 16}, DataType(INFINI_DTYPE_F32));
